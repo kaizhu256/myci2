@@ -1,7 +1,20 @@
 shCiPre() {(set -e
 # this function will run pre-ci
-    if (printf "$GITHUB_REF_NAME" | grep -qv ".*/.*/.*")
+    local FILE
+    if (printf "$GITHUB_REF_NAME" | grep -q ".*/.*/.*")
     then
+        # branch - */*/*
+        git fetch origin alpha
+        # assert latest ci
+        if [ "$(git rev-parse "$GITHUB_REF_NAME")" \
+            != "$(git rev-parse origin/alpha)" ]
+        then
+            git push -f origin "origin/alpha:$GITHUB_REF_NAME"
+            shGithubWorkflowDispatch "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME"
+            return 1
+        fi
+    else
+        # branch - alpha, beta, master
         export GITHUB_REF_NAME="$GITHUB_REPOSITORY/$GITHUB_REF_NAME"
     fi
     export GITHUB_REPOSITORY="$(printf "$GITHUB_REF_NAME" | cut -d'/' -f1,2)"
@@ -21,6 +34,9 @@ shCiPre() {(set -e
     )
     cp .gitconfig .git/config
     git reset "origin/$GITHUB_REF_NAME" --hard
-    shGitCmdWithGithubToken fetch origin alpha
-    git checkout origin/alpha .ci.sh jslint_ci.sh
+    # fetch jslint_ci.sh from trusted source
+    for FILE in .ci.sh jslint_ci.sh
+    do
+        shGithubFileDownload "$GITHUB_REPOSITORY/alpha/$FILE"
+    done
 )}
