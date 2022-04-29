@@ -3,7 +3,10 @@
 # Todo
 - none
 
-# v2022.4.1-beta
+# v2022.4.29
+- fix workflow_dispatch in ci.yml
+
+# v2022.4.1
 - fix ci failing in branch beta and master
 
 # v2022.3.28
