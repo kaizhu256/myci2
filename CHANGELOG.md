@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2022.5.21
+- update jslint v2022.5.20
+
 # v2022.4.29
 - fix workflow_dispatch in ci.yml
 

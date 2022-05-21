@@ -5,5 +5,5 @@
     "scripts": {
         "test": "sh jslint_ci.sh shCiBase"
     },
-    "version": "2022.4.29"
+    "version": "2022.5.21"
 }
