@@ -1,8 +1,10 @@
 #!/bin/sh
 
 # sh one-liner
-# (curl -o /tmp/myci2.sh -s https://raw.githubusercontent.com/kaizhu256/myci2/alpha/myci2.sh && sh /tmp/myci2.sh shMyciInit force)
-# sh ~/myci2/myci2.sh shMyciUpdate
+# (curl -o /tmp/myci2.sh -s https://raw.githubusercontent.com/kaizhu256/myci2/alpha/myci2.sh && . /tmp/myci2.sh && shMyciInit force)
+# shMyciUpdate
+# shSecretFileSet ~/.ssh/known_hosts .ssh/known_hosts
+# shSecretGitCommitAndPush
 
 shCiPreMyci() {(set -e
 # this function will run pre-ci
@@ -13,6 +15,10 @@ shCiPreMyci() {(set -e
     fi
     if [ "$GITHUB_REF_NAME" = shell ]
     then
+        if (! shCiIsMainJob)
+        then
+            return
+        fi
         shGithubFileDownload kaizhu256/mysecret2/alpha/.mysecret2.json.encrypted
         shSshReverseTunnelServer
     fi
@@ -362,7 +368,6 @@ shMyciInit() {(set -e
             rm -rf myci2
             git clone https://github.com/kaizhu256/myci2 \
                 --branch=alpha --single-branch
-            . myci2/myci2.sh
             shMyciUpdate
         fi
     fi
@@ -373,9 +378,9 @@ shMyciInit() {(set -e
     fi
     for FILE in jslint_ci.sh myci2/myci2.sh
     do
-        if [ -f "$FILE" ] && ! (grep -q "^. $FILE$" .bashrc)
+        if [ -f "$FILE" ] && ! (grep -q "^. ~/$FILE$" .bashrc)
         then
-            printf "\n. $FILE\n" >> .bashrc
+            printf "\n. ~/$FILE\n" >> .bashrc
         fi
     done
 )}
@@ -552,14 +557,14 @@ import moduleFs from "fs";
     data = data.filter(function ([
         key
     ]) {
-        return key.startsWith("EXPORT_");
+        return key.startsWith("EXPORT.");
     });
     data = data.map(function ([
         key, val
     ]) {
         return (
             "export "
-            + key.replace("EXPORT_", "")
+            + key.replace("EXPORT.", "")
             + "="
             + "\u0027"
             + val.replace((
@@ -575,7 +580,6 @@ import moduleFs from "fs";
 
 shSshCryptoDecrypt() {(set -e
 # this function will decrypt ssh-files to dir .ssh/
-' "$@")" # '
     for FILE in authorized_keys id_ed25519 known_hosts
     do
         shSecretFileGet ".ssh/$FILE" "$HOME/.ssh/$FILE"
@@ -586,10 +590,8 @@ shSshKeygen() {(set -e
 # this function will generate generic ssh key
     local FILE
     cd ~/.ssh/
-    for FILE in id_ed25519 id_ed25519.pub
-    do
-        rm -f "$FILE"
-    done
+    rm -f id_ed25519
+    rm -f id_ed25519.pub
     ssh-keygen \
         -C "your_email@example.com" \
         -N "" \
@@ -597,16 +599,12 @@ shSshKeygen() {(set -e
         -t ed25519 \
         >/dev/null 2>&1
     cp id_ed25519.pub authorized_keys
-    for FILE in id_ed25519 id_ed25519.pub
-    do
-        cp "$FILE" "$FILE.$(date +"%Y%m%d_%H%M%S")"
-    done
+    cp id_ed25519 "id_ed25519.$(date +"%Y%m%d_%H%M%S")"
+    cp id_ed25519.pub "id_ed25519.pub.$(date +"%Y%m%d_%H%M%S")"
     if [ -f "$HOME/mysecret2/.mysecret2.json" ]
     then
-        for FILE in authorized_keys id_ed25519 known_hosts
-        do
-            shSecretFileSet "$FILE" ".ssh/$FILE"
-        done
+        shSecretFileSet id_ed25519 .ssh/id_ed25519
+        shSecretFileSet known_hosts .ssh/known_hosts
     fi
 )}
 
@@ -618,11 +616,7 @@ shSshReverseTunnelClient() {(set -e
     shift
     local REMOTE_PORT="$(printf $REMOTE_HOST | sed "s/.*://")"
     local REMOTE_HOST="$(printf $REMOTE_HOST | sed "s/:.*//")"
-    ssh \
-        -oStrictHostKeyChecking=no \
-        -oUserKnownHostsFile=/dev/null \
-        -p "$REMOTE_PORT" \
-        "$REMOTE_HOST" "$@"
+    ssh -p "$REMOTE_PORT" "$REMOTE_HOST" "$@"
 )}
 
 shSshReverseTunnelClient2() {(set -e
@@ -631,23 +625,14 @@ shSshReverseTunnelClient2() {(set -e
 # shSshReverseTunnelClient2 user@proxy:22 user@localhost:53735 -t bash
     local PROXY_HOST="$1"
     shift
-    local HOST="$1"
+    local REMOTE_HOST="$1"
     shift
-    local PORT_OFFSET="${1:-0}"
-    shift
-    if ! (printf "$PROXY" | grep -q ":")
-    then
-        PROXY="$PROXY:22"
-    fi
-    local PROXY_PORT="$(printf $PROXY | sed "s/.*://")"
-    PROXY="$(printf $PROXY | sed "s/:.*//")"
-    ssh \
-        -p "$PROXY_PORT" \
-        -t \
-        "$PROXY" \
-        ssh \
-            -p "$((53735+"$PORT_OFFSET"))" \
-            "$HOST" "$@"
+    local PROXY_PORT="$(printf $PROXY_HOST | sed "s/.*://")"
+    local PROXY_HOST="$(printf $PROXY_HOST | sed "s/:.*//")"
+    local REMOTE_PORT="$(printf $REMOTE_HOST | sed "s/.*://")"
+    local REMOTE_HOST="$(printf $REMOTE_HOST | sed "s/:.*//")"
+    ssh -p "$PROXY_PORT" -t "$PROXY_HOST" \
+        ssh -p "$REMOTE_PORT" -t "$REMOTE_HOST" "$@"
 )}
 
 shSshReverseTunnelServer() {(set -e
@@ -655,43 +640,50 @@ shSshReverseTunnelServer() {(set -e
     shSecretCryptoDecrypt
     shSecretVarExport
     local FILE
-    local PROXY_HOST="$(printf $SSH_REVERSE_PROXY | sed "s/:.*//")"
-    local PROXY_PORT="$(printf $SSH_REVERSE_PROXY | sed "s/.*://")"
-    local REMOTE_PORT="$(printf $SSH_REVERSE_REMOTE | sed "s/:.*//")"
+    local II
+    local PROXY_HOST="$(printf $SSH_REVERSE_PROXY_HOST | sed "s/:.*//")"
+    local PROXY_PORT="$(printf $SSH_REVERSE_PROXY_HOST | sed "s/.*://")"
+    local REMOTE_PORT="$(printf $SSH_REVERSE_REMOTE_HOST | sed "s/:.*//")"
     if [ "$REMOTE_PORT" = random ]
     then
         REMOTE_PORT="$(shuf -i 32768-65535 -n 1)"
-        SSH_REVERSE_REMOTE=\
-"$REMOTE_PORT:$(printf "$SSH_REVERSE_REMOTE" | sed "s/random://")"
+        SSH_REVERSE_REMOTE_HOST=\
+"$REMOTE_PORT:$(printf "$SSH_REVERSE_REMOTE_HOST" | sed "s/random://")"
     fi
     # init dir .ssh/
     shSshCryptoDecrypt
-    # copy private-key to local
+    # copy ssh-files to proxy
     scp \
         -P "$PROXY_PORT" \
         "$HOME/.ssh/id_ed25519" "$PROXY_HOST:~/.ssh/" >/dev/null 2>&1
     ssh \
         -p "$PROXY_PORT" \
         "$PROXY_HOST" "chmod 600 ~/.ssh/id_ed25519" >/dev/null 2>&1
-    # create ssh-reverse-tunnel from remote to local
+    # create ssh-reverse-tunnel from remote to proxy
     ssh \
         -N \
-        -R"$SSH_REVERSE_REMOTE" \
+        -R"$SSH_REVERSE_REMOTE_HOST" \
         -T \
         -f \
         -p "$PROXY_PORT" \
         "$PROXY_HOST" >/dev/null 2>&1
+    # sleep 10
+    # add remote-fingerprint to proxy-known-hosts
+    ssh -p "$PROXY_PORT" "$PROXY_HOST" \
+        ssh -oStrictHostKeyChecking=no -p "$REMOTE_PORT" \
+        "$(whoami)@localhost" : >/dev/null 2>&1
     # loop-print to keep ci awake
-    printf "$(whoami)@localhost:$REMOTE_PORT\n"
-    while [ 1 ]
+    II=-10
+    while [ "$II" -lt 60 ] \
+        && (ps x | grep "$SSH_REVERSE_REMOTE_HOST" | grep -qv grep)
     do
-        printf "$(whoami)@localhost:$REMOTE_PORT\n"
-        date
-        sleep 60
+        II=$((II + 1))
+        printf "    $II -- $(date) -- $(whoami)@localhost:$REMOTE_PORT\n"
+        if [ "$II" -lt 0 ]
+        then
+            sleep 5
+        else
+            sleep 60
+        fi
     done
 )}
-
-if [ ! "$(type shCiBase 2>/dev/null)" ]
-then
-    . ./jslint_ci.sh
-fi

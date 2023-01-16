@@ -4,6 +4,7 @@
 - none
 
 # v2023.1.1-beta
+- add branch-shell
 - merge repo devenv into this one
 - update jslint v2023.1.1
 

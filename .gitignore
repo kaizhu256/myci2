@@ -20,3 +20,6 @@ undefined
 !.gitignore
 !.npmignore
 # jslint .gitignore end
+
+!.screenrc
+!.vimrc
