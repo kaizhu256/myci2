@@ -276,6 +276,7 @@ shCiArtifactUpload() {(set -e
     then
         return
     fi
+    mkdir -p .artifact
     # init .git/config
     git config --local user.email "github-actions@users.noreply.github.com"
     git config --local user.name "github-actions"
@@ -374,25 +375,10 @@ import moduleChildProcess from "child_process";
         "branch-$GITHUB_BRANCH0/README.md"
     git status
     git commit -am "update dir branch-$GITHUB_BRANCH0" || true
-    # if branch-gh-pages has more than 50 commits,
-    # then backup and squash commits
-    if [ "$(git rev-list --count gh-pages)" -gt 50 ]
-    then
-        # backup
-        git push origin -f gh-pages:gh-pages-backup
-        # squash commits
-        git checkout --orphan squash1
-        git commit --quiet -am squash || true
-        # reset branch-gh-pages to squashed-commit
-        git push . -f squash1:gh-pages
-        git checkout gh-pages
-        # force-push squashed-commit
-        git push origin -f gh-pages
-    fi
+    # git push
+    shGithubPushBackupAndSquash origin gh-pages 50
     # list files
     shGitLsTree
-    # push branch-gh-pages
-    git push origin gh-pages
     # validate http-links
     (set -e
         cd "branch-$GITHUB_BRANCH0"
@@ -733,6 +719,11 @@ shGitCmdWithGithubToken() {(set -e
     local CMD
     local EXIT_CODE
     local URL
+    if [ ! "$MY_GITHUB_TOKEN" ]
+    then
+        git "$@"
+        return
+    fi
     printf "shGitCmdWithGithubToken $*\n"
     CMD="$1"
     shift
@@ -742,13 +733,10 @@ shGitCmdWithGithubToken() {(set -e
     then
         URL="$(git config "remote.$URL.url")"
     fi
-    if [ "$MY_GITHUB_TOKEN" ]
-    then
-        URL="$(
-            printf "$URL" \
-            | sed -e "s|https://|https://x-access-token:$MY_GITHUB_TOKEN@|"
-        )"
-    fi
+    URL="$(
+        printf "$URL" \
+        | sed -e "s|https://|https://x-access-token:$MY_GITHUB_TOKEN@|"
+    )"
     EXIT_CODE=0
     # hide $MY_GITHUB_TOKEN in case of err
     git "$CMD" "$URL" "$@" 2>/dev/null || EXIT_CODE="$?"
@@ -905,7 +893,7 @@ import modulePath from "path";
     let content = process.argv[2];
     let path = process.argv[1];
     let repo;
-    let responseText;
+    let responseBuf;
     let url;
     function httpRequest({
         method,
@@ -914,22 +902,26 @@ import modulePath from "path";
         return new Promise(function (resolve) {
             moduleHttps.request(`${url}?ref=${branch}`, {
                 headers: {
-                    accept: "application/vnd.github.v3+json",
+                    accept: (
+                        content
+                        ? "application/vnd.github.v3+json"
+                        : "application/vnd.github.v3.raw"
+                    ),
                     authorization: `token ${process.env.MY_GITHUB_TOKEN}`,
                     "user-agent": "undefined"
                 },
                 method
             }, function (res) {
-                responseText = "";
-                res.setEncoding("utf8");
+                responseBuf = [];
                 res.on("data", function (chunk) {
-                    responseText += chunk;
+                    responseBuf.push(chunk);
                 });
                 res.on("end", function () {
+                    responseBuf = Buffer.concat(responseBuf);
                     moduleAssert(res.statusCode === 200, (
                         "shGithubFileUpload"
                         + `- failed to download/upload file ${url} - `
-                        + responseText
+                        + responseBuf.slice(0, 1024).toString()
                     ));
                     resolve();
                 });
@@ -945,7 +937,7 @@ import modulePath from "path";
     if (!content) {
         await moduleFs.promises.writeFile(
             modulePath.basename(url),
-            Buffer.from(JSON.parse(responseText).content, "base64")
+            responseBuf
         );
         return;
     }
@@ -956,17 +948,55 @@ import modulePath from "path";
             branch,
             content: content.toString("base64"),
             "message": `upload file ${path}`,
-            sha: JSON.parse(responseText).sha
+            sha: JSON.parse(responseBuf).sha
         })
     });
 }());
 ' "$@" # '
 )}
 
+shGithubPushBackupAndSquash() {
+# this function will, if $GIT_BRANCH has more than $COMMITS commits,
+# then backup, squash, force-push,
+# else normal-push
+    local GIT_REPO="$1"
+    shift
+    local GIT_BRANCH="$1"
+    shift
+    local COMMITS="$1"
+    shift
+    local COMMIT_MESSAGE="squash - $(git log "$GIT_BRANCH" -1 --pretty=%B)"
+    if [ "$(git rev-list --count "$GIT_BRANCH")" -gt "$COMMITS" ]
+    then
+        # backup
+        shGitCmdWithGithubToken push "$GIT_REPO" \
+            "$GIT_BRANCH:$GIT_BRANCH-backup" -f
+        # squash commits
+        git checkout --orphan squash1
+        git commit --quiet -am "$COMMIT_MESSAGE" || true
+        # reset branc to squashed-commit
+        git push . "squash1:$GIT_BRANCH" -f
+        git checkout "$GIT_BRANCH"
+        # force-push squashed-commit
+        shGitCmdWithGithubToken push "$GIT_REPO" "$GIT_BRANCH" -f
+    else
+        shGitCmdWithGithubToken push "$GIT_REPO" "$GIT_BRANCH"
+    fi
+}
+
+shGithubTokenExport() {
+# this function will export $MY_GITHUB_TOKEN from file
+    if [ ! "$MY_GITHUB_TOKEN" ]
+    then
+        export MY_GITHUB_TOKEN="$(cat .my_github_token)"
+    fi
+}
+
 shGithubWorkflowDispatch() {(set -e
 # this function will trigger-workflow to ci-repo $1 for owner.repo.branch $2
 # example use:
-# shGithubWorkflowDispatch octocat/my_ci octocat/my_project/master
+# shGithubWorkflowDispatch octocat/my-ci octocat/my-project/master
+    shGithubTokenExport
     curl "https://api.github.com/repos/$1"\
 "/actions/workflows/ci.yml/dispatches" \
         -H "accept: application/vnd.github.v3+json" \
@@ -3146,7 +3176,7 @@ shRunWithScreenshotTxt() {(set -e
 # https://www.cnx-software.com/2011/09/22/how-to-convert-a-command-line-result-into-an-image-in-linux/
     local EXIT_CODE
     EXIT_CODE=0
-    export SCREENSHOT_SVG="$1"
+    local SCREENSHOT_SVG="$1"
     shift
     printf "0\n" > "$SCREENSHOT_SVG.exit_code"
     printf "shRunWithScreenshotTxt - ($* 2>&1)\n" 1>&2
@@ -3244,7 +3274,7 @@ shCiMain() {(set -e
         return
     fi
     # run "$@" with winpty
-    export CI_UNAME="${CI_UNAME:-$(uname)}"
+    local CI_UNAME="${CI_UNAME:-$(uname)}"
     case "$CI_UNAME" in
     MSYS*)
         if [ ! "$CI_WINPTY" ] && [ "$1" != shHttpFileServer ]

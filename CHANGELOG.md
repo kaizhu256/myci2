@@ -3,6 +3,10 @@
 # Todo
 - none
 
+# v2023.1.1-beta
+- merge repo devenv into this one
+- update jslint v2023.1.1
+
 # v2022.5.21
 - update jslint v2022.5.20
 
