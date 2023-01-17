@@ -271,8 +271,14 @@ import moduleUrl from "url";
 
 shCiArtifactUpload() {(set -e
 # this function will upload build-artifacts to branch-gh-pages
+# shCiArtifactUploadCustom() {(set -e
+# # this function will run custom-code to upload build-artifacts
+#     return
+# )}
     local FILE
-    if (! shCiIsMainJob)
+    if ! (shCiIsMainJob \
+        && [ -f package.json ] \
+        && grep -q '^    "shCiArtifactUpload": 1,$' package.json)
     then
         return
     fi
@@ -330,7 +336,10 @@ import moduleChildProcess from "child_process";
     });
 }());
 ' "$@" # '
-    shCiArtifactUploadCustom
+    if [ "$(command -v shCiArtifactUploadCustom)" = shCiArtifactUploadCustom ]
+    then
+        shCiArtifactUploadCustom
+    fi
     # 1px-border around browser-screenshot
     if (ls .artifact/screenshot_browser_*.png 2>/dev/null \
             && mogrify -version 2>&1 | grep -i imagemagick)
@@ -380,20 +389,19 @@ import moduleChildProcess from "child_process";
     # list files
     shGitLsTree
     # validate http-links
-    (set -e
-        cd "branch-$GITHUB_BRANCH0"
-        sleep 15
-        shDirHttplinkValidate
+    (
+    cd "branch-$GITHUB_BRANCH0"
+    sleep 15
+    shDirHttplinkValidate
     )
-)}
-
-shCiArtifactUploadCustom() {(set -e
-# this function will run custom-code to upload build-artifacts
-    return
 )}
 
 shCiBase() {(set -e
 # this function will run base-ci
+# shCiBaseCustom() {(set -e
+# # this function will run custom-code for base-ci
+#     return
+# )}
     export GITHUB_BRANCH0="$(git rev-parse --abbrev-ref HEAD)"
     # validate package.json.fileCount
     node --input-type=module --eval '
@@ -521,13 +529,12 @@ import moduleFs from "fs";
     await moduleFs.promises.writeFile("README.md", data);
 }());
 ' "$@" # '
-    shCiBaseCustom
+    node jslint.mjs .
+    if [ "$(command -v shCiBaseCustom)" = shCiBaseCustom ]
+    then
+        shCiBaseCustom
+    fi
     git diff
-)}
-
-shCiBaseCustom() {(set -e
-# this function will run custom-ci
-    return
 )}
 
 shCiBranchPromote() {(set -e
@@ -557,6 +564,15 @@ process.exit(Number(
 
 shCiNpmPublish() {(set -e
 # this function will npm-publish package
+# shCiNpmPublishCustom() {(set -e
+# # this function will run custom-code to npm-publish package
+#     # npm publish --access public
+# )}
+    if ! ([ -f package.json ] \
+        && grep -q '^    "shCiNpmPublish": 1,$' package.json)
+    then
+        return
+    fi
     # init package.json for npm-publish
     npm install
     # update package-name
@@ -566,17 +582,27 @@ shCiNpmPublish() {(set -e
             "s|^    \"name\":.*|    \"name\": \"@$GITHUB_REPOSITORY\",|" \
             package.json
     fi
-    shCiNpmPublishCustom
-)}
-
-shCiNpmPublishCustom() {(set -e
-# this function will run custom-code to npm-publish package
-    # npm publish --access public
+    if [ "$(command -v shCiNpmPublishCustom)" = shCiNpmPublishCustom ]
+    then
+        shCiNpmPublishCustom
+    fi
 )}
 
 shCiPre() {(set -e
 # this function will run pre-ci
-    return
+# shCiPreCustom() {(set -e
+# # this function will run custom-code for pre-ci
+#     return
+# )}
+    if [ -f ./myci2.sh ]
+    then
+        . ./myci2.sh :
+        shMyciInit
+    fi
+    if [ "$(command -v shCiPreCustom)" = shCiPreCustom ]
+    then
+        shCiPreCustom
+    fi
 )}
 
 shDiffFileFromDir() {(set -e
@@ -870,6 +896,50 @@ shGitSquashPop() {(set -e
     git commit -am "$MESSAGE" || true
 )}
 
+shGithubCheckoutRemote() {(set -e
+# this function will run like actions/checkout, except checkout remote-branch
+    # GITHUB_REF_NAME="owner/repo/branch"
+    GITHUB_REF_NAME="$1"
+    if (printf "$GITHUB_REF_NAME" | grep -q ".*/.*/.*")
+    then
+        # branch - */*/*
+        git fetch origin alpha
+        # assert latest ci
+        if (git rev-parse "$GITHUB_REF_NAME" >/dev/null 2>&1) \
+            && [ "$(git rev-parse "$GITHUB_REF_NAME")" \
+            != "$(git rev-parse origin/alpha)" ]
+        then
+            git push -f origin "origin/alpha:$GITHUB_REF_NAME"
+            shGithubWorkflowDispatch "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME"
+            return 1
+        fi
+    else
+        # branch - alpha, beta, master
+        GITHUB_REF_NAME="$GITHUB_REPOSITORY/$GITHUB_REF_NAME"
+    fi
+    GITHUB_REPOSITORY="$(printf "$GITHUB_REF_NAME" | cut -d'/' -f1,2)"
+    GITHUB_REF_NAME="$(printf "$GITHUB_REF_NAME" | cut -d'/' -f3)"
+    # replace current git-checkout with $GITHUB_REF_NAME
+    rm -rf * ..?* .[!.]*
+    shGitCmdWithGithubToken clone "https://github.com/$GITHUB_REPOSITORY" tmp \
+        --branch="$GITHUB_REF_NAME" \
+        --depth=1 \
+        --single-branch
+    mv tmp/.git .
+    cp tmp/.gitconfig .git/config
+    rm -rf tmp
+    git reset "origin/$GITHUB_REF_NAME" --hard
+    # fetch jslint_ci.sh from trusted source
+    shGitCmdWithGithubToken fetch origin alpha --depth=1
+    for FILE in .ci.sh .ci2.sh jslint_ci.sh myci2.sh
+    do
+        if [ -f "$FILE" ]
+        then
+            git checkout origin/alpha "$FILE"
+        fi
+    done
+)}
+
 shGithubFileDownload() {(set -e
 # this function will download file $1 from github repo/branch
 # https://docs.github.com/en/rest/reference/repos#create-or-update-file-contents
@@ -988,7 +1058,7 @@ shGithubTokenExport() {
 # this function will export $MY_GITHUB_TOKEN from file
     if [ ! "$MY_GITHUB_TOKEN" ]
     then
-        export MY_GITHUB_TOKEN="$(cat .my_github_token)"
+        export MY_GITHUB_TOKEN="$(cat "$HOME/.mysecret2/.my_github_token")"
     fi
 }
 
@@ -3174,14 +3244,13 @@ v8CoverageReportCreate({
 shRunWithScreenshotTxt() {(set -e
 # this function will run cmd $@ and screenshot text-output
 # https://www.cnx-software.com/2011/09/22/how-to-convert-a-command-line-result-into-an-image-in-linux/
-    local EXIT_CODE
-    EXIT_CODE=0
+    local EXIT_CODE=0
     local SCREENSHOT_SVG="$1"
     shift
     printf "0\n" > "$SCREENSHOT_SVG.exit_code"
     printf "shRunWithScreenshotTxt - ($* 2>&1)\n" 1>&2
     # run "$@" with screenshot
-    (set -e
+    (
         "$@" 2>&1 || printf "$?\n" > "$SCREENSHOT_SVG.exit_code"
     ) | tee "$SCREENSHOT_SVG.txt"
     EXIT_CODE="$(cat "$SCREENSHOT_SVG.exit_code")"
@@ -3286,9 +3355,17 @@ shCiMain() {(set -e
         ;;
     esac
     # run "$@"
+    if [ -f ./myci2.sh ]
+    then
+        . ./myci2.sh :
+    fi
     if [ -f ./.ci.sh ]
     then
-        . ./.ci.sh
+        . ./.ci.sh :
+    fi
+    if [ -f ./.ci2.sh ]
+    then
+        . ./.ci2.sh :
     fi
     "$@"
 )}

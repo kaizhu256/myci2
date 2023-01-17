@@ -4,6 +4,7 @@
 - none
 
 # v2023.1.1-beta
+- jslint-ci - revamp auto-updating and add shell-function shGithubCheckoutRemote
 - add branch-shell
 - merge repo devenv into this one
 - update jslint v2023.1.1

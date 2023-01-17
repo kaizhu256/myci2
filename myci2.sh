@@ -1,8 +1,8 @@
 #!/bin/sh
 
 # sh one-liner
-# (curl -o /tmp/myci2.sh -s https://raw.githubusercontent.com/kaizhu256/myci2/alpha/myci2.sh && . /tmp/myci2.sh && shMyciInit force)
-# shMyciUpdate
+# (curl -o ~/myci2.sh -s https://raw.githubusercontent.com/kaizhu256/myci2/alpha/myci2.sh && . ~/myci2.sh && shMyciInit)
+# . ~/myci2.sh && shMyciUpdate
 # shSecretFileSet ~/.ssh/known_hosts .ssh/known_hosts
 # shSecretGitCommitAndPush
 
@@ -15,11 +15,6 @@ shCiPreMyci() {(set -e
     fi
     if [ "$GITHUB_REF_NAME" = shell ]
     then
-        if (! shCiIsMainJob)
-        then
-            return
-        fi
-        shGithubFileDownload kaizhu256/mysecret2/alpha/.mysecret2.json.encrypted
         shSshReverseTunnelServer
     fi
 )}
@@ -150,6 +145,7 @@ async function cryptoJweDecrypt({
     plaintext = new TextDecoder().decode(plaintext);
     if (fileDecrypted) {
         await moduleFs.promises.writeFile(fileDecrypted, plaintext);
+        await moduleFs.promises.chmod(fileDecrypted, "600");
     }
     return plaintext;
 }
@@ -296,51 +292,6 @@ async function cryptoJweEncrypt({
 ' "$@" # '
 )}
 
-shGithubCheckoutRemote() {(set -e
-# this function will run like actions/checkout, except checkout remote-branch
-    # GITHUB_REF_NAME="owner/repo/branch"
-    export GITHUB_REF_NAME="$1"
-    local FILE
-    if (printf "$GITHUB_REF_NAME" | grep -q ".*/.*/.*")
-    then
-        # branch - */*/*
-        git fetch origin alpha
-        # assert latest ci
-        if [ "$(git rev-parse "$GITHUB_REF_NAME")" \
-            != "$(git rev-parse origin/alpha)" ]
-        then
-            git push -f origin "origin/alpha:$GITHUB_REF_NAME"
-            shGithubWorkflowDispatch "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME"
-            return 1
-        fi
-    else
-        # branch - alpha, beta, master
-        export GITHUB_REF_NAME="$GITHUB_REPOSITORY/$GITHUB_REF_NAME"
-    fi
-    export GITHUB_REPOSITORY="$(printf "$GITHUB_REF_NAME" | cut -d'/' -f1,2)"
-    export GITHUB_REF_NAME="$(printf "$GITHUB_REF_NAME" | cut -d'/' -f3)"
-    (set -e
-    cd ..
-    shGitCmdWithGithubToken clone \
-        "https://github.com/$GITHUB_REPOSITORY" \
-        "$GITHUB_WORKSPACE.tmp" \
-        --branch="$GITHUB_REF_NAME" \
-        --depth=1 \
-        --single-branch
-    rm -rf "$GITHUB_WORKSPACE/"* "$GITHUB_WORKSPACE/".* || true
-    cp -rf "$GITHUB_WORKSPACE.tmp/"* "$GITHUB_WORKSPACE/"
-    cp -rf "$GITHUB_WORKSPACE.tmp/".* "$GITHUB_WORKSPACE/" || true
-    cd "$GITHUB_WORKSPACE"
-    )
-    cp .gitconfig .git/config
-    git reset "origin/$GITHUB_REF_NAME" --hard
-    # fetch jslint_ci.sh from trusted source
-    for FILE in .ci.sh jslint_ci.sh
-    do
-        shGithubFileDownload "$GITHUB_REPOSITORY/alpha/$FILE"
-    done
-)}
-
 shMyciInit() {(set -e
 # this function will init myci2 in current environment
     local FILE
@@ -383,6 +334,16 @@ shMyciInit() {(set -e
             printf "\n. ~/$FILE\n" >> .bashrc
         fi
     done
+    # init .mysecret2
+    if [ "$MY_GITHUB_TOKEN" ] && [ ! -d "$HOME/.mysecret2" ]
+    then
+        mkdir -p "$HOME/.mysecret2"
+        chmod 700 "$HOME/.mysecret2"
+        (
+        cd "$HOME/.mysecret2"
+        shGithubFileDownload kaizhu256/mysecret2/alpha/.mysecret2.json.encrypted
+        )
+    fi
 )}
 
 shMyciUpdate() {(set -e
@@ -430,35 +391,79 @@ shMyciUpdate() {(set -e
         return
     fi
     # sync .gitignore
-    if [ ! -f .gitignore ]
-    then
-        touch .gitignore
-    fi
-    node --eval '
+    for FILE in \
+        .gitignore \
+        .github/workflows/ci.yml \
+        .github/workflows/publish.yml
+    do
+        if [ ! -f "$FILE" ]
+        then
+            cp "$HOME/myci2/$FILE" "$FILE"
+        else
+            node --input-type=module --eval '
+import moduleFs from "fs";
+import assert from "assert";
 (async function () {
     let data1;
     let data2;
+    let dataReplace;
     let file1 = process.argv[1];
     let file2 = process.argv[2];
-    let moduleFs = require("fs");
-    data1 = await moduleFs.promises.readFile(file1, "utf8");
-    data2 = await moduleFs.promises.readFile(file2, "utf8");
-    data2 = data2.replace((
-        /[\S\s]*?\n# jslint .gitignore end\n|^/m
-    ), data1.replace((
+    let rgx = new RegExp(
+        `\\n# base - ${file2} - beg\\n[\\S\\s]*?\\n# base - ${file2} - end\\n`
+    );
+    data1 = `\n${await moduleFs.promises.readFile(file1, "utf8")}\n`;
+    data2 = `\n${await moduleFs.promises.readFile(file2, "utf8")}\n`;
+    dataReplace = rgx.exec(data1)[0];
+    assert(dataReplace);
+    data2 = data2.replace(rgx, dataReplace.replace((
         /\$/g
     ), "$$"));
-    await moduleFs.promises.writeFile(file2, data2);
+    await moduleFs.promises.writeFile(file2, data2.trim() + "\n");
 }());
-' "$HOME/myci2/.gitignore" .gitignore # '
-    #
+' "$HOME/myci2/$FILE" "$FILE" # '
+        fi
+    done
     git --no-pager diff
+)}
+
+shMyciUpdateReverse() {(set -e
+# this function will reverse-update myci2 from current dir
+    if [ ! -d .git ]
+    then
+        return
+    fi
+    local FILE
+    local FILE_MYCI
+    local FILE_HOME
+    # ln file
+    mkdir -p "$HOME/.vim"
+    for FILE in \
+        .vimrc \
+        jslint.mjs \
+        jslint_ci.sh \
+        jslint_wrapper_vim.vim \
+        myci2.sh
+    do
+        FILE_MYCI="$HOME/myci2/$FILE"
+        FILE_HOME="$HOME/$FILE"
+        case "$FILE" in
+        jslint_wrapper_vim.vim)
+            FILE_HOME="$HOME/.vim/$FILE"
+            ;;
+        esac
+        if [ -f "$FILE" ]
+        then
+            ln -f "$FILE" "$FILE_HOME" || true
+        fi
+    done
 )}
 
 shSecretCryptoDecrypt() {(set -e
 # this function will decrypt file using jwe and $MY_GITHUB_TOKEN
-    shCryptoJweDecryptEncrypt decrypt .mysecret2.json.encrypted .mysecret2.json
-    chmod 600 .mysecret2.json
+    shCryptoJweDecryptEncrypt decrypt \
+        "$HOME/.mysecret2/.mysecret2.json.encrypted" \
+        "$HOME/.mysecret2/.mysecret2.json"
 )}
 
 shSecretCryptoEncrypt() {(set -e
@@ -497,7 +502,7 @@ async function fsWriteFileWithParents(pathname, data) {
 }
 (async function () {
     let data;
-    let fileSecret = ".mysecret2.json";
+    let fileSecret = `${process.env.HOME}/.mysecret2/.mysecret2.json`;
     let fileKey;
     let fileWrite;
     fileKey = process.argv[1];
@@ -520,7 +525,7 @@ import moduleFs from "fs";
     let data;
     let file = process.argv[1];
     let key = process.argv[2];
-    let fileSecret = `${process.env.HOME}/mysecret2/.mysecret2.json`;
+    let fileSecret = `${process.env.HOME}/.mysecret2/.mysecret2.json`;
     data = JSON.parse(
         await moduleFs.promises.readFile(fileSecret)
     );
@@ -536,8 +541,8 @@ import moduleFs from "fs";
 )}
 
 shSecretGitCommitAndPush() {(set -e
-# this function will git-commit and git-push mysecret2
-    cd "$HOME/mysecret2/"
+# this function will git-commit and git-push .mysecret2
+    cd "$HOME/.mysecret2/"
     shJsonNormalize .mysecret2.json
     shSecretCryptoEncrypt
     git commit -am 'update .mysecret2.json.encrypted'
@@ -546,12 +551,13 @@ shSecretGitCommitAndPush() {(set -e
 
 shSecretVarExport() {
 # this function will open json-file, and export env key/val items
-    eval "$(node --input-type=module --eval '
+    eval "$(sh jslint_ci.sh node --input-type=module --eval '
 import moduleFs from "fs";
 (async function () {
     let data;
+    let fileSecret = `${process.env.HOME}/.mysecret2/.mysecret2.json`;
     data = JSON.parse(
-        await moduleFs.promises.readFile(".mysecret2.json")
+        await moduleFs.promises.readFile(fileSecret)
     );
     data = Object.entries(data);
     data = data.filter(function ([
@@ -601,7 +607,7 @@ shSshKeygen() {(set -e
     cp id_ed25519.pub authorized_keys
     cp id_ed25519 "id_ed25519.$(date +"%Y%m%d_%H%M%S")"
     cp id_ed25519.pub "id_ed25519.pub.$(date +"%Y%m%d_%H%M%S")"
-    if [ -f "$HOME/mysecret2/.mysecret2.json" ]
+    if [ -f "$HOME/.mysecret2/.mysecret2.json" ]
     then
         shSecretFileSet id_ed25519 .ssh/id_ed25519
         shSecretFileSet known_hosts .ssh/known_hosts
@@ -623,10 +629,10 @@ shSshReverseTunnelClient2() {(set -e
 # this function will client-login to ssh-reverse-tunnel
 # example use:
 # shSshReverseTunnelClient2 user@proxy:22 user@localhost:53735 -t bash
-    local PROXY_HOST="$1"
-    shift
+    shSecretVarExport
     local REMOTE_HOST="$1"
     shift
+    local PROXY_HOST="$SSH_REVERSE_PROXY_HOST"
     local PROXY_PORT="$(printf $PROXY_HOST | sed "s/.*://")"
     local PROXY_HOST="$(printf $PROXY_HOST | sed "s/:.*//")"
     local REMOTE_PORT="$(printf $REMOTE_HOST | sed "s/.*://")"
@@ -637,6 +643,11 @@ shSshReverseTunnelClient2() {(set -e
 
 shSshReverseTunnelServer() {(set -e
 # this function will create ssh-reverse-tunnel on server
+    if (! shCiIsMainJob)
+    then
+        return
+    fi
+    shGithubFileDownload kaizhu256/mysecret2/alpha/.mysecret2.json.encrypted
     shSecretCryptoDecrypt
     shSecretVarExport
     local FILE
@@ -667,7 +678,6 @@ shSshReverseTunnelServer() {(set -e
         -f \
         -p "$PROXY_PORT" \
         "$PROXY_HOST" >/dev/null 2>&1
-    # sleep 10
     # add remote-fingerprint to proxy-known-hosts
     ssh -p "$PROXY_PORT" "$PROXY_HOST" \
         ssh -oStrictHostKeyChecking=no -p "$REMOTE_PORT" \
