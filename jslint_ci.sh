@@ -276,7 +276,7 @@ shCiArtifactUpload() {(set -e
 #     return
 # )}
     local FILE
-    if ! (shCiIsMainJob \
+    if ! (shCiMatrixIsmainName \
         && [ -f package.json ] \
         && grep -q '^    "shCiArtifactUpload": 1,$' package.json)
     then
@@ -552,14 +552,16 @@ shCiBranchPromote() {(set -e
     git push "$REMOTE" "$REMOTE/$BRANCH1:$BRANCH2" "$@"
 )}
 
-shCiIsMainJob() {(set -e
+shCiMatrixIsmainName() {(set -e
 # this function will return 0 if current ci-job is main job
-    node --input-type=module --eval '
-process.exit(Number(
-    `node.${process.version.split(".")[0]}.${process.arch}.${process.platform}`
-    !== process.env.CI_MAIN_JOB
-));
-' "$@" # '
+    CI_MATRIX_NAME="$(printf "$CI_MATRIX_NAME" | xargs)"
+    [ "$CI_MATRIX_NAME" ] && [ "$CI_MATRIX_NAME" = "$CI_MATRIX_NAME_MAIN" ]
+)}
+
+shCiMatrixIsmainNodeversion() {(set -e
+# this function will return 0 if current ci-job is main job
+    [ "$CI_MATRIX_NODE_VERSION" ] \
+        && [ "$CI_MATRIX_NODE_VERSION" = "$CI_MATRIX_NODE_VERSION_MAIN" ]
 )}
 
 shCiNpmPublish() {(set -e
@@ -745,11 +747,6 @@ shGitCmdWithGithubToken() {(set -e
     local CMD
     local EXIT_CODE
     local URL
-    if [ ! "$MY_GITHUB_TOKEN" ]
-    then
-        git "$@"
-        return
-    fi
     printf "shGitCmdWithGithubToken $*\n"
     CMD="$1"
     shift
@@ -763,6 +760,11 @@ shGitCmdWithGithubToken() {(set -e
         printf "$URL" \
         | sed -e "s|https://|https://x-access-token:$MY_GITHUB_TOKEN@|"
     )"
+    if [ ! "$MY_GITHUB_TOKEN" ]
+    then
+        git "$CMD" "$URL" "$@"
+        return
+    fi
     EXIT_CODE=0
     # hide $MY_GITHUB_TOKEN in case of err
     git "$CMD" "$URL" "$@" 2>/dev/null || EXIT_CODE="$?"
@@ -953,6 +955,7 @@ shGithubFileUpload() {(set -e
 # https://docs.github.com/en/rest/reference/repos#create-or-update-file-contents
 # example use:
 # shGithubFileUpload octocat/hello-worId/master/hello.txt hello.txt
+    shGithubTokenExport
     node --input-type=module --eval '
 import moduleAssert from "assert";
 import moduleFs from "fs";
@@ -1040,7 +1043,7 @@ shGithubPushBackupAndSquash() {
     then
         # backup
         shGitCmdWithGithubToken push "$GIT_REPO" \
-            "$GIT_BRANCH:$GIT_BRANCH-backup" -f
+            "$GIT_BRANCH:$GIT_BRANCH.backup_wday$(date -u +%w)" -f
         # squash commits
         git checkout --orphan squash1
         git commit --quiet -am "$COMMIT_MESSAGE" || true

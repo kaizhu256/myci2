@@ -6,16 +6,24 @@
 # shSecretFileSet ~/.ssh/known_hosts .ssh/known_hosts
 # shSecretGitCommitAndPush
 
-shCiPreMyci() {(set -e
-# this function will run pre-ci
+shCiPreCustomMyci() {(set -e
+# this function will run custom-code for pre-ci
     if (printf "$GITHUB_REF_NAME" | grep -q ".*/.*/.*")
     then
         shGithubCheckoutRemote "$GITHUB_REF_NAME"
         return
     fi
-    if [ "$GITHUB_REF_NAME" = shell ]
+    if (shCiMatrixIsmainName)
     then
-        shSshReverseTunnelServer
+        case "$GITHUB_REF_NAME" in
+        shell)
+            shSshReverseTunnelServer
+            ;;
+        alpha)
+            git push -f origin alpha:kaizhu256/betadog/alpha
+            shGithubWorkflowDispatch kaizhu256/myci2 kaizhu256/betadog/alpha
+            ;;
+        esac
     fi
 )}
 
@@ -392,9 +400,10 @@ shMyciUpdate() {(set -e
     fi
     # sync .gitignore
     for FILE in \
-        .gitignore \
+        .gitconfig \
         .github/workflows/ci.yml \
-        .github/workflows/publish.yml
+        .github/workflows/publish.yml \
+        .gitignore
     do
         if [ ! -f "$FILE" ]
         then
@@ -457,13 +466,6 @@ shMyciUpdateReverse() {(set -e
             ln -f "$FILE" "$FILE_HOME" || true
         fi
     done
-)}
-
-shSecretCryptoDecrypt() {(set -e
-# this function will decrypt file using jwe and $MY_GITHUB_TOKEN
-    shCryptoJweDecryptEncrypt decrypt \
-        "$HOME/.mysecret2/.mysecret2.json.encrypted" \
-        "$HOME/.mysecret2/.mysecret2.json"
 )}
 
 shSecretCryptoEncrypt() {(set -e
@@ -584,14 +586,6 @@ import moduleFs from "fs";
 ' "$@")" # '
 }
 
-shSshCryptoDecrypt() {(set -e
-# this function will decrypt ssh-files to dir .ssh/
-    for FILE in authorized_keys id_ed25519 known_hosts
-    do
-        shSecretFileGet ".ssh/$FILE" "$HOME/.ssh/$FILE"
-    done
-)}
-
 shSshKeygen() {(set -e
 # this function will generate generic ssh key
     local FILE
@@ -643,13 +637,20 @@ shSshReverseTunnelClient2() {(set -e
 
 shSshReverseTunnelServer() {(set -e
 # this function will create ssh-reverse-tunnel on server
-    if (! shCiIsMainJob)
-    then
-        return
-    fi
-    shGithubFileDownload kaizhu256/mysecret2/alpha/.mysecret2.json.encrypted
-    shSecretCryptoDecrypt
+    # init secret
+    shCryptoJweDecryptEncrypt decrypt \
+        "$HOME/.mysecret2/.mysecret2.json.encrypted" \
+        "$HOME/.mysecret2/.mysecret2.json"
     shSecretVarExport
+    echo "$MY_GITHUB_TOKEN" > "$HOME/.mysecret2/.my_github_token"
+    chmod 600 "$HOME/.mysecret2/.my_github_token"
+    # init dir .ssh/
+    for FILE in authorized_keys id_ed25519 known_hosts
+    do
+        shSecretFileGet ".ssh/$FILE" "$HOME/.ssh/$FILE"
+    done
+    chmod 700 "$HOME/.ssh"
+    # init ssh-reverse-tunnel
     local FILE
     local II
     local PROXY_HOST="$(printf $SSH_REVERSE_PROXY_HOST | sed "s/:.*//")"
@@ -661,8 +662,6 @@ shSshReverseTunnelServer() {(set -e
         SSH_REVERSE_REMOTE_HOST=\
 "$REMOTE_PORT:$(printf "$SSH_REVERSE_REMOTE_HOST" | sed "s/random://")"
     fi
-    # init dir .ssh/
-    shSshCryptoDecrypt
     # copy ssh-files to proxy
     scp \
         -P "$PROXY_PORT" \

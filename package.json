@@ -1,6 +1,6 @@
 {
     "counter": 1,
-    "fileCount": 17,
+    "fileCount": 16,
     "name": "myci2",
     "scripts": {
         "test": "sh jslint_ci.sh shCiBase"
