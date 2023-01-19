@@ -907,7 +907,7 @@ shGithubCheckoutRemote() {(set -e
         # branch - */*/*
         git fetch origin alpha
         # assert latest ci
-        if (git rev-parse "$GITHUB_REF_NAME" >/dev/null 2>&1) \
+        if (git rev-parse "$GITHUB_REF_NAME" &>/dev/null) \
             && [ "$(git rev-parse "$GITHUB_REF_NAME")" \
             != "$(git rev-parse origin/alpha)" ]
         then
@@ -923,21 +923,21 @@ shGithubCheckoutRemote() {(set -e
     GITHUB_REF_NAME="$(printf "$GITHUB_REF_NAME" | cut -d'/' -f3)"
     # replace current git-checkout with $GITHUB_REF_NAME
     rm -rf * ..?* .[!.]*
-    shGitCmdWithGithubToken clone "https://github.com/$GITHUB_REPOSITORY" tmp \
-        --branch="$GITHUB_REF_NAME" \
-        --depth=1 \
-        --single-branch
-    mv tmp/.git .
-    cp tmp/.gitconfig .git/config
-    rm -rf tmp
+    shGitCmdWithGithubToken clone \
+        "https://github.com/$GITHUB_REPOSITORY" __tmp1 \
+        --branch="$GITHUB_REF_NAME" --depth=1 --single-branch
+    mv __tmp1/.git .
+    cp __tmp1/.gitconfig .git/config
+    rm -rf __tmp1
     git reset "origin/$GITHUB_REF_NAME" --hard
     # fetch jslint_ci.sh from trusted source
-    shGitCmdWithGithubToken fetch origin alpha:alpha2 --depth=1
+    git branch -D __tmp1 &>/dev/null || true
+    shGitCmdWithGithubToken fetch origin alpha:__tmp1 --depth=1
     for FILE in .ci.sh .ci2.sh jslint_ci.sh myci2.sh
     do
         if [ -f "$FILE" ]
         then
-            git checkout alpha2 "$FILE"
+            git checkout __tmp1 "$FILE"
         fi
     done
 )}

@@ -4,7 +4,8 @@
 - none
 
 # v2023.1.1-beta
-- pre-fork to new repo mycron2
+- replace branch shell with branch sh_lin, sh_mac, sh_win
+- cron - add loopback to mycron2 stub
 - jslint-ci - revamp auto-updating and add shell-function shGithubCheckoutRemote
 - add branch-shell
 - merge repo devenv into this one

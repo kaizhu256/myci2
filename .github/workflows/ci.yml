@@ -8,7 +8,6 @@ on:
       - alpha
       - beta
       - master
-      - shell
   workflow_dispatch:
 env:
   MY_GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}

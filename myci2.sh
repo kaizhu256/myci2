@@ -3,29 +3,7 @@
 # sh one-liner
 # (curl -o ~/myci2.sh -s https://raw.githubusercontent.com/kaizhu256/myci2/alpha/myci2.sh && . ~/myci2.sh && shMyciInit)
 # . ~/myci2.sh && shMyciUpdate
-# shSecretFileSet ~/.ssh/known_hosts .ssh/known_hosts
 # shSecretGitCommitAndPush
-
-shCiPreCustomMyci() {(set -e
-# this function will run custom-code for pre-ci
-    if (printf "$GITHUB_REF_NAME" | grep -q ".*/.*/.*")
-    then
-        shGithubCheckoutRemote "$GITHUB_REF_NAME"
-        return
-    fi
-    if (shCiMatrixIsmainName)
-    then
-        case "$GITHUB_REF_NAME" in
-        shell)
-            shSshReverseTunnelServer
-            ;;
-        alpha)
-            git push -f origin alpha:kaizhu256/betadog/alpha
-            shGithubWorkflowDispatch kaizhu256/myci2 kaizhu256/betadog/alpha
-            ;;
-        esac
-    fi
-)}
 
 shCryptoJweDecryptEncrypt() {(set -e
 # this function will decrypt/encrypt file using jwe and $MY_GITHUB_TOKEN
@@ -320,14 +298,14 @@ shMyciInit() {(set -e
         fi
     done
     # init myci2
-    if (git --version >/dev/null 2>&1)
+    if (git --version &>/dev/null)
     then
         if [ ! -d myci2 ] || [ "$MODE_FORCE" ]
         then
             rm -rf myci2
             git clone https://github.com/kaizhu256/myci2 \
                 --branch=alpha --single-branch
-            shMyciUpdate
+            (cd myci2 && cp .gitconfig .git/config && shMyciUpdate)
         fi
     fi
     # init .bashrc
@@ -342,28 +320,68 @@ shMyciInit() {(set -e
             printf "\n. ~/$FILE\n" >> .bashrc
         fi
     done
-    # init .mysecret2
-    if [ "$MY_GITHUB_TOKEN" ] && [ ! -d "$HOME/.mysecret2" ]
+    if ! ([ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ]) # github-action-only
     then
-        mkdir -p "$HOME/.mysecret2"
-        chmod 700 "$HOME/.mysecret2"
-        (
-        cd "$HOME/.mysecret2"
-        shGithubFileDownload kaizhu256/mysecret2/alpha/.mysecret2.json.encrypted
-        )
+        return
+    fi
+    . ./jslint_ci.sh
+    # init .git/config
+    git config --global user.email "github-actions@users.noreply.github.com"
+    git config --global user.name "github-actions"
+    # init .mysecret2
+    if [ ! -d .mysecret2 ]
+    then
+        shGitCmdWithGithubToken clone \
+            https://github.com/kaizhu256/mysecret2 .mysecret2 \
+            --branch=alpha --depth=1 --single-branch
+        chmod 700 .mysecret2
+        shSecretCryptoDecrypt
     fi
 )}
 
-shMyciUpdate() {(set -e
-# this function will update myci2 in current dir
+shMyciReverseUpdate() {(set -e
+# this function will reverse-update myci2 from current dir
     if [ ! -d .git ]
     then
         return
     fi
+    # ln file
+    local FILE
+    local FILE_HOME
+    local FILE_MYCI
+    mkdir -p "$HOME/.vim"
+    for FILE in \
+        .vimrc \
+        jslint.mjs \
+        jslint_ci.sh \
+        jslint_wrapper_vim.vim \
+        myci2.sh
+    do
+        FILE_HOME="$HOME/$FILE"
+        FILE_MYCI="$HOME/myci2/$FILE"
+        case "$FILE" in
+        jslint_wrapper_vim.vim)
+            FILE_HOME="$HOME/.vim/$FILE"
+            ;;
+        esac
+        if [ -f "$FILE" ]
+        then
+            ln -f "$FILE" "$FILE_HOME" || true
+        fi
+    done
+)}
+
+shMyciUpdate() {(set -e
+# this function will update myci2 in current dir
+    [ -d .git ] && [ -f jslint_ci.sh ] # git-repo-only
+    # sync origin
+    git fetch origin alpha beta master
+    git pull origin alpha
+    git branch beta origin/beta 2>/dev/null || git push . origin/beta:beta
+    # ln file
     local FILE
     local FILE_MYCI
     local FILE_HOME
-    # ln file
     mkdir -p "$HOME/.vim"
     for FILE in \
         .vimrc \
@@ -385,15 +403,15 @@ shMyciUpdate() {(set -e
         else
             ln -f "$FILE_MYCI" "$FILE_HOME"
         fi
-        if [ -f "$FILE" ] && [ "$PWD" != "$HOME/myci2" ]
+        if [ -f "$FILE" ]
         then
-            ln -f "$FILE_MYCI" "$FILE" || true
+            ln -f "$FILE_HOME" "$FILE"
         fi
     done
     ln -f "$HOME/jslint.mjs" "$HOME/.vim/jslint.mjs"
     # detect nodejs
-    if ! ( node --version >/dev/null 2>&1 \
-        || node.exe --version >/dev/null 2>&1)
+    if ! (node --version &>/dev/null \
+        || node.exe --version &>/dev/null)
     then
         git --no-pager diff
         return
@@ -436,41 +454,16 @@ import assert from "assert";
     git --no-pager diff
 )}
 
-shMyciUpdateReverse() {(set -e
-# this function will reverse-update myci2 from current dir
-    if [ ! -d .git ]
-    then
-        return
-    fi
-    local FILE
-    local FILE_MYCI
-    local FILE_HOME
-    # ln file
-    mkdir -p "$HOME/.vim"
-    for FILE in \
-        .vimrc \
-        jslint.mjs \
-        jslint_ci.sh \
-        jslint_wrapper_vim.vim \
-        myci2.sh
-    do
-        FILE_MYCI="$HOME/myci2/$FILE"
-        FILE_HOME="$HOME/$FILE"
-        case "$FILE" in
-        jslint_wrapper_vim.vim)
-            FILE_HOME="$HOME/.vim/$FILE"
-            ;;
-        esac
-        if [ -f "$FILE" ]
-        then
-            ln -f "$FILE" "$FILE_HOME" || true
-        fi
-    done
+shSecretCryptoDecrypt() {(set -e
+# this function will decrypt file using jwe and $MY_GITHUB_TOKEN
+    shCryptoJweDecryptEncrypt decrypt \
+        "$HOME/.mysecret2/.mysecret2.json.encrypted" \
+        "$HOME/.mysecret2/.mysecret2.json"
 )}
 
 shSecretCryptoEncrypt() {(set -e
 # this function will encrypt file using jwe and $MY_GITHUB_TOKEN
-    shCryptoJweDecryptEncrypt encrypt .mysecret2.json
+    shCryptoJweDecryptEncrypt encrypt "$HOME/.mysecret2/.mysecret2.json"
 )}
 
 shSecretFileGet() {(set -e
@@ -597,7 +590,7 @@ shSshKeygen() {(set -e
         -N "" \
         -f ~/.ssh/id_ed25519 \
         -t ed25519 \
-        >/dev/null 2>&1
+        &>/dev/null
     cp id_ed25519.pub authorized_keys
     cp id_ed25519 "id_ed25519.$(date +"%Y%m%d_%H%M%S")"
     cp id_ed25519.pub "id_ed25519.pub.$(date +"%Y%m%d_%H%M%S")"
@@ -623,9 +616,9 @@ shSshReverseTunnelClient2() {(set -e
 # this function will client-login to ssh-reverse-tunnel
 # example use:
 # shSshReverseTunnelClient2 user@proxy:22 user@localhost:53735 -t bash
-    shSecretVarExport
     local REMOTE_HOST="$1"
     shift
+    shSecretVarExport
     local PROXY_HOST="$SSH_REVERSE_PROXY_HOST"
     local PROXY_PORT="$(printf $PROXY_HOST | sed "s/.*://")"
     local PROXY_HOST="$(printf $PROXY_HOST | sed "s/:.*//")"
@@ -633,66 +626,4 @@ shSshReverseTunnelClient2() {(set -e
     local REMOTE_HOST="$(printf $REMOTE_HOST | sed "s/:.*//")"
     ssh -p "$PROXY_PORT" -t "$PROXY_HOST" \
         ssh -p "$REMOTE_PORT" -t "$REMOTE_HOST" "$@"
-)}
-
-shSshReverseTunnelServer() {(set -e
-# this function will create ssh-reverse-tunnel on server
-    # init secret
-    shCryptoJweDecryptEncrypt decrypt \
-        "$HOME/.mysecret2/.mysecret2.json.encrypted" \
-        "$HOME/.mysecret2/.mysecret2.json"
-    shSecretVarExport
-    echo "$MY_GITHUB_TOKEN" > "$HOME/.mysecret2/.my_github_token"
-    chmod 600 "$HOME/.mysecret2/.my_github_token"
-    # init dir .ssh/
-    for FILE in authorized_keys id_ed25519 known_hosts
-    do
-        shSecretFileGet ".ssh/$FILE" "$HOME/.ssh/$FILE"
-    done
-    chmod 700 "$HOME/.ssh"
-    # init ssh-reverse-tunnel
-    local FILE
-    local II
-    local PROXY_HOST="$(printf $SSH_REVERSE_PROXY_HOST | sed "s/:.*//")"
-    local PROXY_PORT="$(printf $SSH_REVERSE_PROXY_HOST | sed "s/.*://")"
-    local REMOTE_PORT="$(printf $SSH_REVERSE_REMOTE_HOST | sed "s/:.*//")"
-    if [ "$REMOTE_PORT" = random ]
-    then
-        REMOTE_PORT="$(shuf -i 32768-65535 -n 1)"
-        SSH_REVERSE_REMOTE_HOST=\
-"$REMOTE_PORT:$(printf "$SSH_REVERSE_REMOTE_HOST" | sed "s/random://")"
-    fi
-    # copy ssh-files to proxy
-    scp \
-        -P "$PROXY_PORT" \
-        "$HOME/.ssh/id_ed25519" "$PROXY_HOST:~/.ssh/" >/dev/null 2>&1
-    ssh \
-        -p "$PROXY_PORT" \
-        "$PROXY_HOST" "chmod 600 ~/.ssh/id_ed25519" >/dev/null 2>&1
-    # create ssh-reverse-tunnel from remote to proxy
-    ssh \
-        -N \
-        -R"$SSH_REVERSE_REMOTE_HOST" \
-        -T \
-        -f \
-        -p "$PROXY_PORT" \
-        "$PROXY_HOST" >/dev/null 2>&1
-    # add remote-fingerprint to proxy-known-hosts
-    ssh -p "$PROXY_PORT" "$PROXY_HOST" \
-        ssh -oStrictHostKeyChecking=no -p "$REMOTE_PORT" \
-        "$(whoami)@localhost" : >/dev/null 2>&1
-    # loop-print to keep ci awake
-    II=-10
-    while [ "$II" -lt 60 ] \
-        && (ps x | grep "$SSH_REVERSE_REMOTE_HOST" | grep -qv grep)
-    do
-        II=$((II + 1))
-        printf "    $II -- $(date) -- $(whoami)@localhost:$REMOTE_PORT\n"
-        if [ "$II" -lt 0 ]
-        then
-            sleep 5
-        else
-            sleep 60
-        fi
-    done
 )}

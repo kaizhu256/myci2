@@ -2,6 +2,10 @@
     "counter": 1,
     "fileCount": 16,
     "name": "myci2",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/kaizhu256/myci2.git"
+    },
     "scripts": {
         "test": "sh jslint_ci.sh shCiBase"
     },
