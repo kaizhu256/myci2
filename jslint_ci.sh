@@ -322,6 +322,11 @@ import moduleChildProcess from "child_process";
             "shRunWithScreenshotTxt",
             ".artifact/screenshot_package_listing.svg",
             "shGitLsTree"
+        ],
+        // parallel-task - screenshot logo
+        [
+            "jslint_ci.sh",
+            "shImageLogoCreate"
         ]
     ].forEach(function (argList) {
         moduleChildProcess.spawn("sh", argList, {
@@ -630,6 +635,7 @@ shDirHttplinkValidate() {(set -e
         printf "$GITHUB_REPOSITORY" | sed -e "s|/|.github.io/|"
     )"
     node --input-type=module --eval '
+import moduleAssert from "assert";
 import moduleFs from "fs";
 import moduleHttps from "https";
 import moduleUrl from "url";
@@ -668,15 +674,14 @@ import moduleUrl from "url";
                 "g"
             ), GITHUB_GITHUB_IO);
             if ((
-                /^http:\/\/(?:127\.0\.0\.1|localhost)[\/:]/
+                /^http:\/\/(?:127\.0\.0\.1|localhost|www\.w3\.org\/2000\/svg)(?:[\/:]|$)/m
             ).test(url)) {
-                return;
+                return "";
             }
-            if (url.startsWith("http://")) {
-                throw new Error(
-                    `shDirHttplinkValidate - ${file} - insecure link - ${url}`
-                );
-            }
+            moduleAssert.ok(
+                !url.startsWith("http://"),
+                `shDirHttplinkValidate - ${file} - insecure link - ${url}`
+            );
             // ignore duplicate-link
             if (dict.hasOwnProperty(url)) {
                 return "";
@@ -688,12 +693,10 @@ import moduleUrl from "url";
                 console.error(
                     "shDirHttplinkValidate " + res.statusCode + " " + url
                 );
-                if (!(res.statusCode < 400)) {
-                    throw new Error(
-                        "shDirHttplinkValidate - " + file
-                        + " - unreachable link " + url
-                    );
-                }
+                moduleAssert.ok(
+                    res.statusCode < 400,
+                    `shDirHttplinkValidate - ${file} - unreachable link ${url}`
+                );
                 req.abort();
                 res.destroy();
             });
@@ -707,8 +710,10 @@ import moduleUrl from "url";
             if (!linkType.startsWith("[")) {
                 url = url.slice(1);
             }
-            if (url.length === 0 || url.startsWith("data:")) {
-                return;
+            if ((
+                /^$|^\\|^data:/m
+            ).test(url)) {
+                return "";
             }
             // ignore duplicate-link
             if (dict.hasOwnProperty(url)) {
@@ -722,12 +727,13 @@ import moduleUrl from "url";
                     console.error(
                         "shDirHttplinkValidate " + Boolean(exists) + " " + url
                     );
-                    if (!exists) {
-                        throw new Error(
-                            "shDirHttplinkValidate - " + file
-                            + " - unreachable link " + url
-                        );
-                    }
+                    moduleAssert.ok(
+                        exists,
+                        (
+                            `shDirHttplinkValidate - ${file}`
+                            + `- unreachable link ${url}`
+                        )
+                    );
                 });
             }
             return "";
@@ -991,7 +997,7 @@ import modulePath from "path";
                 });
                 res.on("end", function () {
                     responseBuf = Buffer.concat(responseBuf);
-                    moduleAssert(res.statusCode === 200, (
+                    moduleAssert.ok(res.statusCode === 200, (
                         "shGithubFileUpload"
                         + `- failed to download/upload file ${url} - `
                         + responseBuf.slice(0, 1024).toString()
@@ -1426,76 +1432,16 @@ import moduleUrl from "url";
 
 shImageLogoCreate() {(set -e
 # this function will create .png logo
-    local SIZE
-    echo '
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<title>logo</title>
-<style>
-/* sh jslint_ci.sh shBrowserScreenshot asset_image_logo.html --window-size=512x512 */
-/* csslint box-model:false */
-/* csslint ignore:start */
-*,
-*:after,
-*:before {
-    box-sizing: border-box;
-}
-@font-face {
-    font-family: Daley;
-    font-weight: bold;
-    src: url("asset_font_daley_bold.woff2") format("woff2");
-}
-/* csslint ignore:end */
-body,
-div {
-    margin: 0;
-}
-.container1 {
-    background: antiquewhite;
-    border: 24px solid darkslategray;
-    border-radius: 96px;
-    color: darkslategray;
-    font-family: Daley;
-    height: 512px;
-    margin: 0;
-    position: relative;
-    width: 512px;
-    zoom: 100%;
-/*
-    background: transparent;
-    border: 24px solid black;
-    color: black;
-*/
-}
-.text1 {
-    font-size: 256px;
-    left: 44px;
-    position: absolute;
-    top: 32px;
-}
-.text2 {
-    bottom: 8px;
-    font-size: 192px;
-    left: 44px;
-    position: absolute;
-}
-</style>
-</head>
-<body>
-<div class="container1">
-<div class="text1">JS</div>
-<div class="text2">Lint</div>
-</div>
-</body>
-</html>
-' > .artifact/asset_image_logo_512.html
-    cp asset_font_daley_bold.woff2 .artifact || true
+    if [ ! -f asset_image_logo_512.html ]
+    then
+        return
+    fi
     # screenshot asset_image_logo_512.png
-    shBrowserScreenshot .artifact/asset_image_logo_512.html \
+    shBrowserScreenshot asset_image_logo_512.html \
         --window-size=512x512 \
         -screenshot=.artifact/asset_image_logo_512.png
     # create various smaller thumbnails
+    local SIZE
     for SIZE in 32 64 128 256
     do
         convert -resize "${SIZE}x${SIZE}" .artifact/asset_image_logo_512.png \

@@ -13,7 +13,7 @@ shCryptoJweDecryptEncrypt() {(set -e
 # shGitLsTree | sort -rk4 # sort by size
     shGithubTokenExport
     node --input-type=module --eval '
-import assert from "assert";
+import moduleAssert from "assert";
 import moduleFs from "fs";
 import {
     webcrypto
@@ -86,7 +86,7 @@ async function cryptoJweDecrypt({
         return Buffer.from(elem, "base64");
     });
     header = jweCompact.split(".")[0];
-    assert(
+    moduleAssert.ok(
         "eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0" === header,
         `cryptoJweDecrypt - invalid header - ${header}`
     );
@@ -428,8 +428,8 @@ shMyciUpdate() {(set -e
             cp "$HOME/myci2/$FILE" "$FILE"
         else
             node --input-type=module --eval '
+import moduleAssert from "assert";
 import moduleFs from "fs";
-import assert from "assert";
 (async function () {
     let data1;
     let data2;
@@ -442,7 +442,7 @@ import assert from "assert";
     data1 = `\n${await moduleFs.promises.readFile(file1, "utf8")}\n`;
     data2 = `\n${await moduleFs.promises.readFile(file2, "utf8")}\n`;
     dataReplace = rgx.exec(data1)[0];
-    assert(dataReplace);
+    moduleAssert.ok(dataReplace);
     data2 = data2.replace(rgx, dataReplace.replace((
         /\$/g
     ), "$$"));

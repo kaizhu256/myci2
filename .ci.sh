@@ -39,10 +39,30 @@ shCiPreCustom() {(set -e
     alpha)
         #
         # sync branch
-        shGitCmdWithGithubToken push origin alpha:cron -f &
-        shGitCmdWithGithubToken push origin alpha:sh_lin -f &
-        shGitCmdWithGithubToken push origin alpha:sh_mac -f &
-        shGitCmdWithGithubToken push origin alpha:sh_win -f &
+        node --input-type=module --eval '
+import moduleChildProcess from "child_process";
+import moduleAssert from "assert";
+(async function () {
+    await Promise.all([
+        "shGitCmdWithGithubToken push origin alpha:cron -f",
+        "shGitCmdWithGithubToken push origin alpha:sh_lin -f",
+        "shGitCmdWithGithubToken push origin alpha:sh_mac -f",
+        "shGitCmdWithGithubToken push origin alpha:sh_win -f",
+        ":"
+    ].map(async function (script) {
+        await new Promise(function (resolve) {
+            moduleChildProcess.spawn(
+                "sh",
+                ["jslint_ci.sh", script.split(" ")].flat(),
+                {stdio: ["ignore", 1, 2]}
+            ).on("exit", function (exitCode) {
+                moduleAssert.ok(exitCode === 0, exitCode);
+                resolve();
+            });
+        });
+    }));
+}());
+' "$@" # '
         #
         # test
         # git push -f origin alpha:kaizhu256/betadog/alpha
@@ -56,7 +76,7 @@ shCiPreCustom() {(set -e
         (
         rm -rf __tmp1
         git clone https://github.com/kaizhu256/mycron2 __tmp1 \
-            --branch=alpha --depth=1 --single-branch
+            --branch=alpha --single-branch
         cd __tmp1
         echo '# this workflow will run cron-job
 # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#schedule
@@ -77,11 +97,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          curl "https://api.github.com/repos/kaizhu256/myci2/actions/workflows/ci.yml/dispatches" \
+          curl "https://api.github.com/repos/kaizhu256/myci2'\
+'/actions/workflows/ci.yml/dispatches" \
             -H "accept: application/vnd.github.v3+json" \
             -H "authorization: token ${{ secrets.MY_GITHUB_TOKEN }}" \
             -X POST \
-            -d '"'"'{"ref":"cron"}'"'"' \
+            -d '"'"'{
+                "inputs":{"workflow_dispatch_name":"mycron2"},
+                "ref":"cron"
+            }'"'"' \
             -s \
             &>/dev/null
 ' > .github/workflows/ci.yml
@@ -100,7 +124,35 @@ jobs:
 shMycron2() {(set -e
 # this function will run cron-task from mycron2
     [ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ] # github-action-only
-    echo hello cron!
+    node --input-type=module --eval '
+import moduleChildProcess from "child_process";
+import moduleAssert from "assert";
+(async function () {
+    await Promise.all([
+        "kaizhu256/betadog"
+    ].map(async function (repo) {
+        await new Promise(function (resolve) {
+            moduleChildProcess.spawn(
+                "sh",
+                ["-c", (`
+(
+    sh jslint_ci.sh shGitCmdWithGithubToken clone \
+        https://github.com/${repo} __repo_${repo.replace("/", "_")} \
+        --branch=alpha --depth=1 --single-branch
+    cd __repo_${repo.replace("/", "_")}
+    cp .gitconfig .git/config
+    sh jslint_ci.sh shCron
+)
+                `)],
+                {stdio: ["ignore", 1, 2]}
+            ).on("exit", function (exitCode) {
+                moduleAssert.ok(exitCode === 0, exitCode);
+                resolve();
+            });
+        });
+    }));
+}());
+' "$@" # '
 )}
 
 shSshReverseTunnelServer() {(set -e
