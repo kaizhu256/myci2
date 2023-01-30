@@ -658,6 +658,10 @@ import moduleUrl from "url";
             return;
         }
         data = await moduleFs.promises.readFile(file, "utf8");
+        // ignore link-rel-preconnect
+        data = data.replace((
+            /<link\b.*?\brel="preconnect".*?>/g
+        ), "");
         data.replace((
             /\bhttps?:\/\/.*?(?:[\s")\]]|\W?$)/gm
         ), function (url) {
@@ -976,6 +980,7 @@ import modulePath from "path";
     let url;
     function httpRequest({
         method,
+        modeSha,
         payload
     }) {
         return new Promise(function (resolve) {
@@ -997,22 +1002,35 @@ import modulePath from "path";
                 });
                 res.on("end", function () {
                     responseBuf = Buffer.concat(responseBuf);
-                    moduleAssert.ok(res.statusCode === 200, (
-                        "shGithubFileUpload"
-                        + `- failed to download/upload file ${url} - `
-                        + responseBuf.slice(0, 1024).toString()
-                    ));
+                    moduleAssert.ok(
+                        (
+                            res.statusCode < 400
+                            || (res.statusCode === 404 && modeSha)
+                        ),
+                        (
+                            `shGithubFileUpload - ${res.statusCode}`
+                            + ` - failed to download/upload file ${url} - `
+                            + responseBuf.slice(0, 1024).toString()
+                        )
+                    );
                     resolve();
                 });
             }).end(payload);
         });
     }
+    console.error(
+        content
+        ? `shGithubFileUpload - ${process.argv[1]}`
+        : `shGithubFileDownload - ${process.argv[1]}`
+    );
     path = path.split("/");
     repo = path.slice(0, 2).join("/");
     branch = path[2];
     path = path.slice(3).join("/");
     url = `https://api.github.com/repos/${repo}/contents/${path}`;
-    await httpRequest({});
+    await httpRequest({
+        modeSha: content
+    });
     if (!content) {
         await moduleFs.promises.writeFile(
             modulePath.basename(url),
@@ -1051,10 +1069,11 @@ shGithubPushBackupAndSquash() {
         shGitCmdWithGithubToken push "$GIT_REPO" \
             "$GIT_BRANCH:$GIT_BRANCH.backup_wday$(date -u +%w)" -f
         # squash commits
-        git checkout --orphan squash1
+        git branch -D __tmp1 &>/dev/null || true
+        git checkout --orphan __tmp1
         git commit --quiet -am "$COMMIT_MESSAGE" || true
-        # reset branc to squashed-commit
-        git push . "squash1:$GIT_BRANCH" -f
+        # reset branch to squashed-commit
+        git push . "__tmp1:$GIT_BRANCH" -f
         git checkout "$GIT_BRANCH"
         # force-push squashed-commit
         shGitCmdWithGithubToken push "$GIT_REPO" "$GIT_BRANCH" -f

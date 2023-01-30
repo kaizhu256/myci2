@@ -3,7 +3,7 @@
 # Todo
 - none
 
-# v2023.1.1-beta
+# v2023.1.29
 - ci - auto-create asset_image_logo_512.png from asset_image_logo_512.html
 - replace branch shell with branch sh_lin, sh_mac, sh_win
 - cron - add loopback to mycron2 stub
