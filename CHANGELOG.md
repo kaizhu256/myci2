@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2023.2.1-beta
+- ci - remove/decouple cron-related code
+
 # v2023.1.29
 - ci - auto-create asset_image_logo_512.png from asset_image_logo_512.html
 - replace branch shell with branch sh_lin, sh_mac, sh_win

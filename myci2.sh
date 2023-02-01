@@ -320,10 +320,8 @@ shMyciInit() {(set -e
             printf "\n. ~/$FILE\n" >> .bashrc
         fi
     done
-    if ! ([ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ]) # github-action-only
-    then
-        return
-    fi
+    # github-action-only
+    if ! ([ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ]) then return; fi
     . ./jslint_ci.sh
     # init .git/config
     git config --global user.email "github-actions@users.noreply.github.com"
