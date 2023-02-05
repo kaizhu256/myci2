@@ -4,6 +4,7 @@
 - none
 
 # v2023.2.1-beta
+- ci - add shell-functions shGithubBranchCopyAll(), shGithubBranchCopyAll()
 - ci - remove/decouple cron-related code
 
 # v2023.1.29

@@ -25,9 +25,9 @@ set softtabstop=2
 set statusline=%F%m%r%h%w\ %y\ %l:%c\ %L\ 0x%B
 set tabstop=4
 "" tell it to use an undo file
-set undofile
+"" set undofile
 "" set a directory to store the undo history
-set undodir=$HOME/.vimundo/
+"" set undodir=$HOME/.vimundo/
 
 augroup My
     autocmd!

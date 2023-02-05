@@ -8,27 +8,23 @@ shCiPreCustom() {(set -e
         return
     fi
     case "$GITHUB_REF_NAME" in
-    sh_lin)
-        [ "$(uname)" = Linux ] || return 0
-        shSshReverseTunnelServer
-        # killall ssh
-        return
-        ;;
-    sh_mac)
-        [ "$(uname)" = Darwin ] || return 0
-        shSshReverseTunnelServer
-        # killall ssh
-        return
-        ;;
-    sh_win)
-        (printf "$(uname)" | grep -q MINGW64_NT) || return 0
-        powershell \
-            "Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0"
-        printf 'PubkeyAuthentication yes'> /c/programdata/ssh/sshd_config
-        powershell "Start-Service sshd" &>/dev/null
-        cat /c/programdata/ssh/sshd_config
-        shSshReverseTunnelServer
-        # powershell "taskkill /F /IM ssh.exe /T"
+    mysh)
+        case "$(uname)" in
+        MINGW*)
+            powershell \
+                "Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0"
+            printf 'PubkeyAuthentication yes'> /c/programdata/ssh/sshd_config
+            powershell "Start-Service sshd" &>/dev/null
+            cat /c/programdata/ssh/sshd_config
+            shSshReverseTunnelServer
+            # powershell "taskkill /F /IM ssh.exe /T"
+            ;;
+        *)
+            shSshReverseTunnelServer
+            # killall ssh
+            return
+            ;;
+        esac
         return
         ;;
     esac
@@ -45,9 +41,7 @@ import moduleChildProcess from "child_process";
 import moduleAssert from "assert";
 (async function () {
     await Promise.all([
-        "shGitCmdWithGithubToken push origin alpha:sh_lin -f",
-        "shGitCmdWithGithubToken push origin alpha:sh_mac -f",
-        "shGitCmdWithGithubToken push origin alpha:sh_win -f",
+        "shGitCmdWithGithubToken push origin alpha:mysh -f",
         ":"
     ].map(async function (script) {
         await new Promise(function (resolve) {
@@ -66,10 +60,8 @@ import moduleAssert from "assert";
         #
         # test
         # git push -f origin alpha:kaizhu256/betadog/alpha
-        # shGithubWorkflowDispatch kaizhu256/myci2 kaizhu256/betadog/alpha
-        # shGithubWorkflowDispatch kaizhu256/myci2 sh_lin &
-        # shGithubWorkflowDispatch kaizhu256/myci2 sh_mac &
-        # shGithubWorkflowDispatch kaizhu256/myci2 sh_win &
+        # shGithubWorkflowDispatch kaizhu256/myci2 kaizhu256/betadog/alpha &
+        # shGithubWorkflowDispatch kaizhu256/myci2 mysh &
         ;;
     esac
 )}
@@ -124,7 +116,7 @@ shSshReverseTunnelServer() {(set -e
         "$(whoami)@localhost" : &>/dev/null
     # loop-print to keep ci awake
     II=-10
-    while [ "$II" -lt 60 ] \
+    while [ "$II" -lt 120 ] \
         && ([ "$II" -lt 0 ] \
             || (ps x | grep "$SSH_REVERSE_REMOTE_HOST\|/usr/bin/ssh$" \
                 | grep -qv grep)) \

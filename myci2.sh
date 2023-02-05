@@ -278,6 +278,70 @@ async function cryptoJweEncrypt({
 ' "$@" # '
 )}
 
+shGithubBranchCopyAll() {(set -e
+# this function will copy-all branch from $GITHUB_REPO1 to $GITHUB_REPO2
+    shGithubTokenExport
+    local GITHUB_REPO1="$1"
+    local GITHUB_REPO2="$2"
+    local MODE="$3"
+    rm -rf __tmp1
+    shGitCmdWithGithubToken clone "https://github.com/$GITHUB_REPO1" __tmp1
+    (
+    cd __tmp1
+    local BRANCH
+    local PID
+    local PID_LIST
+    for BRANCH in $(git branch -r | tail -n +2)
+    do
+        BRANCH="$(printf "$BRANCH" | sed -e "s|^origin/||")"
+        git branch "$BRANCH" "origin/$BRANCH" || true
+        if [ "$MODE" = force ]
+        then
+            shGitCmdWithGithubToken push \
+                "https://github.com/$GITHUB_REPO2" "$BRANCH" -f &
+        else
+            shGitCmdWithGithubToken push \
+                "https://github.com/$GITHUB_REPO2" "$BRANCH" &
+        fi
+        PID_LIST="$PID_LIST $!"
+    done
+    for PID in $PID_LIST
+    do
+        printf "shGithubBranchCopyAll - wait $PID ...\n"
+        wait $PID
+        printf "done\n"
+    done
+    printf "shGithubBranchCopyAll - done\n"
+    )
+)}
+
+shGithubBranchDeleteAll() {(set -e
+# this function will delete-all branch from $GITHUB_REPO
+    shGithubTokenExport
+    local GITHUB_REPO="$1"
+    local BRANCH
+    local PID
+    local PID_LIST
+    for BRANCH in $(git ls-remote -q \
+        "https://x-access-token:$MY_GITHUB_TOKEN@github.com/$GITHUB_REPO" \
+        2>/dev/null \
+        | grep -o "\<refs/heads/.*"
+    )
+    do
+        BRANCH="$(printf "$BRANCH" | sed -e "s|^refs/heads/||")"
+        shGitCmdWithGithubToken push \
+            "https://github.com/$GITHUB_REPO" ":$BRANCH" &
+        PID_LIST="$PID_LIST $!"
+    done
+    for PID in $PID_LIST
+    do
+        printf "shGithubBranchDeleteAll - wait $PID ...\n"
+        wait $PID || true
+        printf "done\n"
+    done
+    printf "shGithubBranchDeleteAll - done\n"
+)}
+
 shMyciInit() {(set -e
 # this function will init myci2 in current environment
     local FILE
