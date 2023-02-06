@@ -548,24 +548,15 @@ function objectDeepCopyWithKeysSorted(obj) {
         await mysecretDecrypt();
         await fsWriteFileWithParents(
             fileGetDestination,
-            Buffer.from(mysecretJson[itemKey] || "", "base64")
+            mysecretJson[itemKey] || ""
         );
         await moduleFs.promises.chmod(fileGetDestination, "600");
         break;
     case "shSecretFileSet":
         await mysecretDecrypt();
-        mysecretJson[itemKey] = Buffer.from(
-            await moduleFs.promises.readFile(itemVal)
-        ).toString("base64");
-        await mysecretEncrypt();
-        break;
-    case "shSecretItemTextGet":
-        await mysecretDecrypt();
-        process.stdout.write(mysecretJson[itemKey] || "");
-        break;
-    case "shSecretItemTextSet":
-        await mysecretDecrypt();
-        mysecretJson[itemKey] = String(itemVal) || undefined;
+        mysecretJson[itemKey] = (
+            await moduleFs.promises.readFile(itemVal, "utf8")
+        );
         await mysecretEncrypt();
         break;
     case "shSecretJsonGet":
@@ -587,6 +578,15 @@ function objectDeepCopyWithKeysSorted(obj) {
             process.stdin.on("end", resolve);
         });
         Object.assign(mysecretJson, JSON.parse(itemVal));
+        await mysecretEncrypt();
+        break;
+    case "shSecretTextGet":
+        await mysecretDecrypt();
+        process.stdout.write(mysecretJson[itemKey] || "");
+        break;
+    case "shSecretTextSet":
+        await mysecretDecrypt();
+        mysecretJson[itemKey] = String(itemVal) || undefined;
         await mysecretEncrypt();
         break;
     default:
@@ -625,17 +625,7 @@ shSecretGitCommitAndPush() {(set -e
     shJsonNormalize .mysecret2.json
     shSecretEncryptToFile
     git commit -am 'update .mysecret2.json.encrypted'
-    shGithubPushBackupAndSquash origin alpha 100
-)}
-
-shSecretItemTextGet() {(set -e
-# this function will decrypt mysecret2, and print item-key $1 to stdout
-    shSecretDecryptEncrypt shSecretItemTextGet "$1"
-)}
-
-shSecretItemTextSet() {(set -e
-# this function will decrypt mysecret2, and set to item-key $1 from item-val $2
-    shSecretDecryptEncrypt shSecretItemTextSet "$1" "$2"
+    shGithubPushBackupAndSquash origin alpha 50
 )}
 
 shSecretJsonGet() {(set -e
@@ -648,14 +638,20 @@ shSecretJsonSet() {(set -e
     shSecretDecryptEncrypt shSecretJsonSet
 )}
 
+shSecretTextGet() {(set -e
+# this function will decrypt mysecret2, and print item-key $1 to stdout
+    shSecretDecryptEncrypt shSecretTextGet "$1"
+)}
+
+shSecretTextSet() {(set -e
+# this function will decrypt mysecret2, and set to item-key $1 from item-val $2
+    shSecretDecryptEncrypt shSecretTextSet "$1" "$2"
+)}
+
 shSecretSshProxyUpdate() {(set -e
 # this function will decrypt mysecret2, and update ssh-proxy-secrets
     cd ~/.ssh/
     # create new ssh-proxy-key
-    if [ -f id_ed25519.proxy ]
-    then
-        cp id_ed25519.proxy id_ed25519.proxy.old
-    fi
     rm -f id_ed25519.proxy
     rm -f id_ed25519.proxy.pub
     ssh-keygen \
@@ -671,14 +667,16 @@ shSecretSshProxyUpdate() {(set -e
     touch known_hosts.proxy
     perl -pi -e "chomp if eof" known_hosts.proxy
     printf "\n" >> known_hosts.proxy
+    shSecretFileGet .ssh/id_ed25519.proxy0 id_ed25519.proxy0
     ssh \
-        -i id_ed25519.proxy.old \
+        -i id_ed25519.proxy0 \
         -o UserKnownHostsFile=known_hosts.proxy \
         -p "$PROXY_PORT" "$PROXY_HOST" \
         "(set -e
             mkdir -p ~/.ssh
             chmod 700 ~/.ssh
-            printf -- '$(cat id_ed25519.proxy.pub)\n' > ~/.ssh/authorized_keys
+            printf -- '\n$(cat id_ed25519.proxy.pub)\n' \
+                >> ~/.ssh/authorized_keys
             printf -- '$(cat id_ed25519.proxy)\n' > ~/.ssh/id_ed25519
             chmod 600 ~/.ssh/authorized_keys
             chmod 600 ~/.ssh/id_ed25519
@@ -690,7 +688,7 @@ shSecretSshProxyUpdate() {(set -e
     shSecretFileSet .ssh/authorized_keys.proxy id_ed25519.proxy.pub
     shSecretFileSet .ssh/id_ed25519.proxy id_ed25519.proxy
     # save ssh-proxy-host
-    shSecretItemTextSet SSH_REVERSE_PROXY_HOST "$SSH_REVERSE_PROXY_HOST"
+    shSecretTextSet SSH_REVERSE_PROXY_HOST "$SSH_REVERSE_PROXY_HOST"
 )}
 
 shSshKeygen() {(set -e
@@ -709,20 +707,36 @@ shSshKeygen() {(set -e
     cp id_ed25519.pub "id_ed25519.pub.$(date +"%Y%m%d_%H%M%S")"
 )}
 
+shSshProxyClient() {(set -e
+# this function will client-login to ssh-reverse-tunnel
+# example use:
+# shSshReverseTunnelClient user@localhost:53735
+    local SSH_REVERSE_PROXY_HOST="$(shSecretTextGet SSH_REVERSE_PROXY_HOST)"
+    local PROXY_HOST="$SSH_REVERSE_PROXY_HOST"
+    local PROXY_PORT="$(printf $PROXY_HOST | sed "s/.*://")"
+    local PROXY_HOST="$(printf $PROXY_HOST | sed "s/:.*//")"
+    ssh \
+        -i ~/.ssh/id_ed25519.proxy0 \
+        -o UserKnownHostsFile=~/.ssh/known_hosts.proxy \
+        -p "$PROXY_PORT" \
+        -t \
+        "$PROXY_HOST"
+)}
+
 shSshReverseTunnelClient() {(set -e
 # this function will client-login to ssh-reverse-tunnel
 # example use:
 # shSshReverseTunnelClient user@localhost:53735
     local REMOTE_HOST="$1"
     shift
-    local SSH_REVERSE_PROXY_HOST="$(shSecretItemTextGet SSH_REVERSE_PROXY_HOST)"
+    local SSH_REVERSE_PROXY_HOST="$(shSecretTextGet SSH_REVERSE_PROXY_HOST)"
     local PROXY_HOST="$SSH_REVERSE_PROXY_HOST"
     local PROXY_PORT="$(printf $PROXY_HOST | sed "s/.*://")"
     local PROXY_HOST="$(printf $PROXY_HOST | sed "s/:.*//")"
     local REMOTE_PORT="$(printf $REMOTE_HOST | sed "s/.*://")"
     local REMOTE_HOST="$(printf $REMOTE_HOST | sed "s/:.*//")"
     ssh \
-        -i ~/.ssh/id_ed25519.proxy \
+        -i ~/.ssh/id_ed25519.proxy0 \
         -o UserKnownHostsFile=~/.ssh/known_hosts.proxy \
         -p "$PROXY_PORT" \
         -t \
@@ -757,7 +771,7 @@ shSshReverseTunnelServer() {(set -e
     shSecretFileGet .ssh/id_ed25519.proxy id_ed25519
     shSecretFileGet .ssh/known_hosts.proxy known_hosts
     # init ssh-reverse-tunnel
-    local SSH_REVERSE_PROXY_HOST="$(shSecretItemTextGet SSH_REVERSE_PROXY_HOST)"
+    local SSH_REVERSE_PROXY_HOST="$(shSecretTextGet SSH_REVERSE_PROXY_HOST)"
     local II
     local PROXY_HOST="$(printf $SSH_REVERSE_PROXY_HOST | sed "s/:.*//")"
     local PROXY_PORT="$(printf $SSH_REVERSE_PROXY_HOST | sed "s/.*://")"

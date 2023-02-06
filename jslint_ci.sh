@@ -750,18 +750,21 @@ shDuList() {(set -e
 
 shGitCmdWithGithubToken() {(set -e
 # this function will run git $CMD with $MY_GITHUB_TOKEN
-    local CMD
-    local EXIT_CODE
-    local URL
     printf "shGitCmdWithGithubToken $*\n"
+    # scrub token from gitconfig
+    if [ -f .git/config ]
+    then
+        sed -i.bak "s|://.*@|://|g" .git/config
+        rm -f .git/config.bak
+    fi
     if [ ! "$MY_GITHUB_TOKEN" ]
     then
         git "$@"
         return
     fi
-    CMD="$1"
+    local CMD="$1"
     shift
-    URL="$1"
+    local URL="$1"
     shift
     if (printf "$URL" | grep -qv "^https://")
     then
@@ -771,7 +774,7 @@ shGitCmdWithGithubToken() {(set -e
         printf "$URL" \
         | sed -e "s|https://|https://x-access-token:$MY_GITHUB_TOKEN@|"
     )"
-    EXIT_CODE=0
+    local EXIT_CODE=0
     # hide $MY_GITHUB_TOKEN in case of err
     git "$CMD" "$URL" "$@" 2>/dev/null || EXIT_CODE="$?"
     printf "shGitCmdWithGithubToken - EXIT_CODE=$EXIT_CODE\n" 1>&2
@@ -804,7 +807,7 @@ shGitInitBase() {(set -e
         git checkout -b "$BRANCH" base/base
     done
     sed -i.bak "s|owner/repo|${1:-owner/repo}|" .gitconfig
-    rm .gitconfig.bak
+    rm -f .gitconfig.bak
     cp .gitconfig .git/config
     git commit -am "update owner/repo to $1" || true
 )}
