@@ -266,7 +266,6 @@ function base64urlFromBuffer(buf) {
 async function cryptoJweDecryptEncrypt({
     jweCompact,
     jwkKek,
-    password,
     textPlain
 }) {
     let cek;
@@ -276,21 +275,6 @@ async function cryptoJweDecryptEncrypt({
     let tag;
     let textCipher;
 
-// Get 256-bit jwk-formatted-key-encryption-key jwkKek,
-// from sha256-hash of password.
-
-    if (password) {
-        moduleAssert.ok(
-            password.length >= 16,
-            "cryptoJweDecryptEncrypt - password length too short"
-        );
-        jwkKek = JSON.stringify({
-            k: base64urlFromBuffer(
-                await webcrypto.subtle.digest("SHA-256", password)
-            ),
-            kty: "oct"
-        });
-    }
 
 // Key-import to internal key-encryption-key kek,
 // from external 256-bit jwk-formatted-key-encryption-key jwkKek.
@@ -496,6 +480,7 @@ function objectDeepCopyWithKeysSorted(obj) {
     let itemKey = argv[2];
     let itemVal = argv[3];
     let jweCompact;
+    let jwkKek;
     let modeDecryptEncrypt = argv[1];
     let mysecretJson;
 
@@ -503,7 +488,7 @@ function objectDeepCopyWithKeysSorted(obj) {
         mysecretJson = JSON.parse(
             await cryptoJweDecryptEncrypt({
                 jweCompact,
-                password: MY_GITHUB_TOKEN
+                jwkKek
             })
         );
     }
@@ -530,47 +515,78 @@ function objectDeepCopyWithKeysSorted(obj) {
             );
         }
         jweCompact = await cryptoJweDecryptEncrypt({
-            password: MY_GITHUB_TOKEN,
+            jwkKek,
             textPlain: JSON.stringify(mysecretJson)
         });
         await fsWriteFileWithParents(fileEncrypted, jweCompact + "\n");
         mysecretDecryptAndSave();
     }
 
+// Get 256-bit jwk-formatted-key-encryption-key jwkKek,
+// from sha256-hash of MY_GITHUB_TOKEN.
+
+    moduleAssert.ok(
+        MY_GITHUB_TOKEN.length >= 16,
+        "cryptoJweDecryptEncrypt - MY_GITHUB_TOKEN length too short"
+    );
+    jwkKek = JSON.stringify({
+        k: base64urlFromBuffer(
+            await webcrypto.subtle.digest("SHA-256", MY_GITHUB_TOKEN)
+        ),
+        kty: "oct"
+    });
+
     jweCompact = await moduleFs.promises.readFile(fileEncrypted, "utf8");
     switch (modeDecryptEncrypt) {
-    case "decryptFileAndFileGet":
+    case "shSecretDecryptToFile":
+        await mysecretDecryptAndSave("force");
+        break;
+    case "shSecretEncryptToFile":
+        await mysecretEncrypt();
+        break;
+    case "shSecretFileGet":
         await mysecretDecrypt();
         await fsWriteFileWithParents(
             fileGetDestination,
-            (
-                mysecretJson[itemKey]
-                ? Buffer.from(mysecretJson[itemKey], "base64")
-                : ""
-            )
+            Buffer.from(mysecretJson[itemKey] || "", "base64")
         );
         await moduleFs.promises.chmod(fileGetDestination, "600");
         break;
-    case "decryptFileAndFileSet":
+    case "shSecretFileSet":
         await mysecretDecrypt();
         mysecretJson[itemKey] = Buffer.from(
             await moduleFs.promises.readFile(itemVal)
         ).toString("base64");
         await mysecretEncrypt();
         break;
-    case "decryptFileAndItemGet":
+    case "shSecretItemTextGet":
         await mysecretDecrypt();
-        process.stdout.write(mysecretJson[itemKey]);
+        process.stdout.write(mysecretJson[itemKey] || "");
         break;
-    case "decryptFileAndItemSet":
+    case "shSecretItemTextSet":
         await mysecretDecrypt();
-        mysecretJson[itemKey] = itemVal;
+        mysecretJson[itemKey] = String(itemVal) || undefined;
         await mysecretEncrypt();
         break;
-    case "decryptFileToFile":
-        await mysecretDecryptAndSave("force");
+    case "shSecretJsonGet":
+        await mysecretDecrypt();
+        itemVal = {};
+        JSON.parse(itemKey).forEach(function (key) {
+            itemVal[key] = mysecretJson[key] ?? undefined;
+        });
+        process.stdout.write(JSON.stringify(itemVal));
         break;
-    case "encryptFileToFile":
+    case "shSecretJsonSet":
+        await mysecretDecrypt();
+        itemVal = "";
+        process.stdin.setEncoding("utf8");
+        process.stdin.on("data", function (chunk) {
+            itemVal += chunk;
+        });
+        await new Promise(function (resolve) {
+            process.stdin.on("end", resolve);
+        });
+        Object.assign(mysecretJson, JSON.parse(itemVal));
         await mysecretEncrypt();
         break;
     default:
@@ -585,41 +601,51 @@ function objectDeepCopyWithKeysSorted(obj) {
 
 shSecretDecryptToFile() {(set -e
 # this function will decrypt myscret2 using jwe and $MY_GITHUB_TOKEN
-    shSecretDecryptEncrypt decryptFileToFile
+    shSecretDecryptEncrypt shSecretDecryptToFile
 )}
 
 shSecretEncryptToFile() {(set -e
 # this function will encrypt mysecret2 using jwe and $MY_GITHUB_TOKEN
-    shSecretDecryptEncrypt encryptFileToFile
+    shSecretDecryptEncrypt shSecretEncryptToFile
 )}
 
 shSecretFileGet() {(set -e
 # this function will decrypt myscret2, and write from item-key $1 to file $2
-    shSecretDecryptEncrypt decryptFileAndFileGet "$1" "$2"
+    shSecretDecryptEncrypt shSecretFileGet "$1" "$2"
 )}
 
 shSecretFileSet() {(set -e
 # this function will decrypt mysecret2, and write to item-key $1 from file $2
-    shSecretDecryptEncrypt decryptFileAndFileSet "$1" "$2"
+    shSecretDecryptEncrypt shSecretFileSet "$1" "$2"
 )}
 
 shSecretGitCommitAndPush() {(set -e
 # this function will git-commit and git-push .mysecret2
-    cd "$HOME/.mysecret2/"
+    cd ~/.mysecret2/
     shJsonNormalize .mysecret2.json
     shSecretEncryptToFile
     git commit -am 'update .mysecret2.json.encrypted'
     shGithubPushBackupAndSquash origin alpha 100
 )}
 
-shSecretItemGet() {(set -e
+shSecretItemTextGet() {(set -e
 # this function will decrypt mysecret2, and print item-key $1 to stdout
-    shSecretDecryptEncrypt decryptFileAndItemGet "$1"
+    shSecretDecryptEncrypt shSecretItemTextGet "$1"
 )}
 
-shSecretItemSet() {(set -e
+shSecretItemTextSet() {(set -e
 # this function will decrypt mysecret2, and set to item-key $1 from item-val $2
-    shSecretDecryptEncrypt decryptFileAndItemSet "$1" "$2"
+    shSecretDecryptEncrypt shSecretItemTextSet "$1" "$2"
+)}
+
+shSecretJsonGet() {(set -e
+# this function will decrypt mysecret2, and print items in $1 to stdout
+    shSecretDecryptEncrypt shSecretJsonGet "$1"
+)}
+
+shSecretJsonSet() {(set -e
+# this function will decrypt mysecret2, and Object.assign(mysecret2, stdin)
+    shSecretDecryptEncrypt shSecretJsonSet
 )}
 
 shSecretSshProxyUpdate() {(set -e
@@ -664,7 +690,7 @@ shSecretSshProxyUpdate() {(set -e
     shSecretFileSet .ssh/authorized_keys.proxy id_ed25519.proxy.pub
     shSecretFileSet .ssh/id_ed25519.proxy id_ed25519.proxy
     # save ssh-proxy-host
-    shSecretItemSet SSH_REVERSE_PROXY_HOST "$SSH_REVERSE_PROXY_HOST"
+    shSecretItemTextSet SSH_REVERSE_PROXY_HOST "$SSH_REVERSE_PROXY_HOST"
 )}
 
 shSshKeygen() {(set -e
@@ -689,8 +715,7 @@ shSshReverseTunnelClient() {(set -e
 # shSshReverseTunnelClient user@localhost:53735
     local REMOTE_HOST="$1"
     shift
-    local SSH_REVERSE_PROXY_HOST="$(shSecretItemGet \
-        SSH_REVERSE_PROXY_HOST)"
+    local SSH_REVERSE_PROXY_HOST="$(shSecretItemTextGet SSH_REVERSE_PROXY_HOST)"
     local PROXY_HOST="$SSH_REVERSE_PROXY_HOST"
     local PROXY_PORT="$(printf $PROXY_HOST | sed "s/.*://")"
     local PROXY_HOST="$(printf $PROXY_HOST | sed "s/:.*//")"
@@ -732,8 +757,7 @@ shSshReverseTunnelServer() {(set -e
     shSecretFileGet .ssh/id_ed25519.proxy id_ed25519
     shSecretFileGet .ssh/known_hosts.proxy known_hosts
     # init ssh-reverse-tunnel
-    local SSH_REVERSE_PROXY_HOST="$(shSecretItemGet \
-        SSH_REVERSE_PROXY_HOST)"
+    local SSH_REVERSE_PROXY_HOST="$(shSecretItemTextGet SSH_REVERSE_PROXY_HOST)"
     local II
     local PROXY_HOST="$(printf $SSH_REVERSE_PROXY_HOST | sed "s/:.*//")"
     local PROXY_PORT="$(printf $SSH_REVERSE_PROXY_HOST | sed "s/.*://")"
