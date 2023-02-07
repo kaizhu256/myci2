@@ -4,6 +4,7 @@
 - none
 
 # v2023.2.1-beta
+- ci - replace shell-function shGithubPushBackupAndSquash() with simplified shGitCommitPushOrSquash()
 - ci - revamp secret-handling so secrets can be manipulated while encrypted
 - ci - add shell-functions shGithubBranchCopyAll(), shGithubBranchCopyAll()
 - ci - remove/decouple cron-related code

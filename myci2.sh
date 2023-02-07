@@ -1,23 +1,20 @@
 #!/bin/sh
 
 # sh one-liner
-# (curl -o ~/myci2.sh -s https://raw.githubusercontent.com/kaizhu256/myci2/alpha/myci2.sh && . ~/myci2.sh && shMyciInit)
+# curl -o ~/myci2.sh -s https://raw.githubusercontent.com/kaizhu256/myci2/alpha/myci2.sh && . ~/myci2.sh && shMyciInit
 # . ~/myci2.sh && shMyciUpdate
-# shSecretGitCommitAndPush
+# shSecretGitCommitPush
 
 shGithubBranchCopyAll() {(set -e
 # this function will copy-all branch from $GITHUB_REPO1 to $GITHUB_REPO2
     shGithubTokenExport
-    local GITHUB_REPO1="$1"
-    local GITHUB_REPO2="$2"
-    local MODE="$3"
+    GITHUB_REPO1="$1"
+    GITHUB_REPO2="$2"
+    MODE="$3"
     rm -rf __tmp1
     shGitCmdWithGithubToken clone "https://github.com/$GITHUB_REPO1" __tmp1
     (
     cd __tmp1
-    local BRANCH
-    local PID
-    local PID_LIST
     for BRANCH in $(git branch -r | tail -n +2)
     do
         BRANCH="$(printf "$BRANCH" | sed -e "s|^origin/||")"
@@ -32,23 +29,14 @@ shGithubBranchCopyAll() {(set -e
         fi
         PID_LIST="$PID_LIST $!"
     done
-    for PID in $PID_LIST
-    do
-        printf "shGithubBranchCopyAll - wait $PID ...\n"
-        wait $PID
-        printf "done\n"
-    done
-    printf "shGithubBranchCopyAll - done\n"
+    shPidListWait shGithubBranchCopyAll "$PID_LIST"
     )
 )}
 
 shGithubBranchDeleteAll() {(set -e
 # this function will delete-all branch from $GITHUB_REPO
     shGithubTokenExport
-    local GITHUB_REPO="$1"
-    local BRANCH
-    local PID
-    local PID_LIST
+    GITHUB_REPO="$1"
     for BRANCH in $(git ls-remote -q \
         "https://x-access-token:$MY_GITHUB_TOKEN@github.com/$GITHUB_REPO" \
         2>/dev/null \
@@ -60,17 +48,13 @@ shGithubBranchDeleteAll() {(set -e
             "https://github.com/$GITHUB_REPO" ":$BRANCH" &
         PID_LIST="$PID_LIST $!"
     done
-    for PID in $PID_LIST
-    do
-        printf "shGithubBranchDeleteAll - wait $PID ...\n"
-        wait $PID || true
-        printf "done\n"
-    done
-    printf "shGithubBranchDeleteAll - done\n"
+    shPidListWait shGithubBranchDeleteAll "$PID_LIST"
 )}
 
-shMyciInit() {(set -e
+shMyciInit() {
 # this function will init myci2 in current environment
+    (
+    set -e
     local FILE
     local MODE_FORCE
     if [ "$1" = force ]
@@ -88,6 +72,7 @@ shMyciInit() {(set -e
 "https://raw.githubusercontent.com/kaizhu256/myci2/alpha/$FILE"
         fi
     done
+    . ~/jslint_ci.sh :
     # init myci2
     if (git --version &>/dev/null)
     then
@@ -104,16 +89,15 @@ shMyciInit() {(set -e
     then
         touch .bashrc
     fi
-    for FILE in jslint_ci.sh myci2/myci2.sh
+    for FILE in jslint_ci.sh
     do
-        if [ -f "$FILE" ] && ! (grep -q "^. ~/$FILE$" .bashrc)
+        if [ -f "$FILE" ] && ! (grep -q "^. ~/$FILE :$" .bashrc)
         then
-            printf "\n. ~/$FILE\n" >> .bashrc
+            printf "\n. ~/$FILE :\n" >> .bashrc
         fi
     done
     # github-action-only
     if ! ([ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ]) then return; fi
-    . ./jslint_ci.sh
     # init .git/config
     git config --global user.email "github-actions@users.noreply.github.com"
     git config --global user.name "github-actions"
@@ -125,14 +109,19 @@ shMyciInit() {(set -e
             --branch=alpha --depth=1 --single-branch
         chmod 700 .mysecret2
     fi
-)}
+    )
+    . ~/jslint_ci.sh :
+}
 
-shMyciReverseUpdate() {(set -e
+shMyciReverseUpdate() {
 # this function will reverse-update myci2 from current dir
+    (
+    set -e
     if [ ! -d .git ]
     then
         return
     fi
+    git checkout HEAD .
     # ln file
     local FILE
     local FILE_HOME
@@ -157,10 +146,14 @@ shMyciReverseUpdate() {(set -e
             ln -f "$FILE" "$FILE_HOME" || true
         fi
     done
-)}
+    )
+    . ~/jslint_ci.sh :
+}
 
-shMyciUpdate() {(set -e
+shMyciUpdate() {
 # this function will update myci2 in current dir
+    (
+    set -e
     [ -d .git ] && [ -f jslint_ci.sh ] # git-repo-only
     # sync origin
     git fetch origin alpha beta master
@@ -240,7 +233,9 @@ import moduleFs from "fs";
         fi
     done
     git --no-pager diff
-)}
+    )
+    . ~/jslint_ci.sh :
+}
 
 shSecretDecryptEncrypt() {(set -e
 # this function will jwe-decrypt/jwe-encrypt mysecret2 using $MY_GITHUB_TOKEN
@@ -619,13 +614,12 @@ shSecretFileSet() {(set -e
     shSecretDecryptEncrypt shSecretFileSet "$1" "$2"
 )}
 
-shSecretGitCommitAndPush() {(set -e
+shSecretGitCommitPush() {(set -e
 # this function will git-commit and git-push .mysecret2
     cd ~/.mysecret2/
     shJsonNormalize .mysecret2.json
     shSecretEncryptToFile
-    git commit -am 'update .mysecret2.json.encrypted'
-    shGithubPushBackupAndSquash origin alpha 50
+    shGitCommitPushOrSquash "" 100
 )}
 
 shSecretJsonGet() {(set -e
@@ -787,7 +781,7 @@ shSshReverseTunnelServer() {(set -e
         "$PROXY_HOST" &>/dev/null
     # add ssh-remote-fingerprint to ssh-proxy-known-hosts
     ssh -p "$PROXY_PORT" "$PROXY_HOST" \
-        ssh -o StrictHostKeyChecking=no -p "$REMOTE_PORT" \
+        ssh -o LogLevel=ERROR -o StrictHostKeyChecking=no -p "$REMOTE_PORT" \
         "$(whoami)@localhost" : &>/dev/null
     # loop-print to keep ci awake
     II=-10
