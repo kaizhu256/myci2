@@ -4,6 +4,8 @@
 - none
 
 # v2023.2.1-beta
+- ci - add shell-functions shBashrcWindowsInit(), shSecretPull()
+- ci - remove little-used shell-function shCiBranchPromote()
 - ci - replace shell-function shGithubPushBackupAndSquash() with simplified shGitCommitPushOrSquash()
 - ci - revamp secret-handling so secrets can be manipulated while encrypted
 - ci - add shell-functions shGithubBranchCopyAll(), shGithubBranchCopyAll()

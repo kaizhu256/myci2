@@ -632,6 +632,13 @@ shSecretJsonSet() {(set -e
     shSecretDecryptEncrypt shSecretJsonSet
 )}
 
+shSecretPull() {(set -e
+# this function will pull mysecret2 from github
+    cd ~/.mysecret2/
+    git pull origin alpha
+    shSecretDecryptToFile
+)}
+
 shSecretTextGet() {(set -e
 # this function will decrypt mysecret2, and print item-key $1 to stdout
     shSecretDecryptEncrypt shSecretTextGet "$1"
@@ -683,6 +690,8 @@ shSecretSshProxyUpdate() {(set -e
     shSecretFileSet .ssh/id_ed25519.proxy id_ed25519.proxy
     # save ssh-proxy-host
     shSecretTextSet SSH_REVERSE_PROXY_HOST "$SSH_REVERSE_PROXY_HOST"
+    # git push
+    shSecretGitCommitPush
 )}
 
 shSshKeygen() {(set -e
