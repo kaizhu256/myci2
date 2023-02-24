@@ -4,6 +4,7 @@
 - none
 
 # v2023.2.1-beta
+- ci - update shell-function shGithubFileUpload() to be able to download file to specific destination
 - ci - add shell-functions shBashrcWindowsInit(), shSecretPull()
 - ci - remove little-used shell-function shCiBranchPromote()
 - ci - replace shell-function shGithubPushBackupAndSquash() with simplified shGitCommitPushOrSquash()
