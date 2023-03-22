@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2023.3.21
+- ci - update shell-function shRawLibFetch()
+
 # v2023.2.26
 - ci - update shell-function shGithubFileUpload() to be able to download file to specific destination
 - ci - add shell-functions shBashrcWindowsInit(), shSecretPull()

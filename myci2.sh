@@ -3,7 +3,7 @@
 # sh one-liner
 # curl -o ~/myci2.sh -s https://raw.githubusercontent.com/kaizhu256/myci2/alpha/myci2.sh && . ~/myci2.sh && shMyciInit
 # . ~/myci2.sh && shMyciUpdate
-# shSecretGitCommitPush
+# shSecretGitPush
 
 shGithubBranchCopyAll() {(set -e
 # this function will copy-all branch from $GITHUB_REPO1 to $GITHUB_REPO2
@@ -533,10 +533,10 @@ function objectDeepCopyWithKeysSorted(obj) {
 
     jweCompact = await moduleFs.promises.readFile(fileEncrypted, "utf8");
     switch (modeDecryptEncrypt) {
-    case "shSecretDecryptToFile":
+    case "shSecretDecryptFile":
         await mysecretDecryptAndSave("force");
         break;
-    case "shSecretEncryptToFile":
+    case "shSecretEncryptFile":
         await mysecretEncrypt();
         break;
     case "shSecretFileGet":
@@ -594,14 +594,14 @@ function objectDeepCopyWithKeysSorted(obj) {
 ' "$@" # '
 )}
 
-shSecretDecryptToFile() {(set -e
+shSecretDecryptFile() {(set -e
 # this function will decrypt myscret2 using jwe and $MY_GITHUB_TOKEN
-    shSecretDecryptEncrypt shSecretDecryptToFile
+    shSecretDecryptEncrypt shSecretDecryptFile
 )}
 
-shSecretEncryptToFile() {(set -e
+shSecretEncryptFile() {(set -e
 # this function will encrypt mysecret2 using jwe and $MY_GITHUB_TOKEN
-    shSecretDecryptEncrypt shSecretEncryptToFile
+    shSecretDecryptEncrypt shSecretEncryptFile
 )}
 
 shSecretFileGet() {(set -e
@@ -614,12 +614,19 @@ shSecretFileSet() {(set -e
     shSecretDecryptEncrypt shSecretFileSet "$1" "$2"
 )}
 
-shSecretGitCommitPush() {(set -e
+shSecretGitPush() {(set -e
 # this function will git-commit and git-push .mysecret2
     cd ~/.mysecret2/
     shJsonNormalize .mysecret2.json
-    shSecretEncryptToFile
+    shSecretEncryptFile
     shGitCommitPushOrSquash "" 100
+)}
+
+shSecretGitPull() {(set -e
+# this function will pull mysecret2 from github
+    cd ~/.mysecret2/
+    git pull origin alpha
+    shSecretDecryptFile
 )}
 
 shSecretJsonGet() {(set -e
@@ -630,13 +637,6 @@ shSecretJsonGet() {(set -e
 shSecretJsonSet() {(set -e
 # this function will decrypt mysecret2, and Object.assign(mysecret2, stdin)
     shSecretDecryptEncrypt shSecretJsonSet
-)}
-
-shSecretPull() {(set -e
-# this function will pull mysecret2 from github
-    cd ~/.mysecret2/
-    git pull origin alpha
-    shSecretDecryptToFile
 )}
 
 shSecretTextGet() {(set -e
@@ -691,7 +691,7 @@ shSecretSshProxyUpdate() {(set -e
     # save ssh-proxy-host
     shSecretTextSet SSH_REVERSE_PROXY_HOST "$SSH_REVERSE_PROXY_HOST"
     # git push
-    shSecretGitCommitPush
+    shSecretGitPush
 )}
 
 shSshKeygen() {(set -e
