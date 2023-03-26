@@ -60,7 +60,7 @@ shMyciInit() {
         MODE_FORCE=1
         shift
     fi
-    cd "$HOME"
+    cd ~
     # init jslint_ci.sh
     for FILE in .screenrc .vimrc jslint_ci.sh
     do
@@ -95,15 +95,18 @@ shMyciInit() {
         fi
     done
     # google-colab-only
-    if [ "$COLAB_RELEASE_TAG" ]
+    if [ "$COLAB_RELEASE_TAG" ] || [ "$KAGGLE_CONTAINER_NAME" ]
     then
         GITHUB_ACTION=1
-        if (node -e 'process.exit(process.version >= "v18")')
+        if (! sudo /etc/init.d/ssh start &>/dev/null)
         then
             # https://github.com/nodesource/distributions
             curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-            sudo apt-get install -y nodejs openssh-server sqlite3
+            sudo apt-get install -qq -y nodejs openssh-server sqlite3
             sudo /etc/init.d/ssh start
+            curl -L -O -s https://github.com/cloudflare/cloudflared/\
+releases/latest/download/cloudflared-linux-amd64.deb
+            sudo dpkg -i cloudflared-linux-amd64.deb
         fi
     fi
     # github-action-only
@@ -655,43 +658,30 @@ shSecretTextSet() {(set -e
 
 shSecretSshProxyUpdate() {(set -e
 # this function will decrypt mysecret2, and update ssh-proxy-secrets
+# example use:
+# shSecretSshProxyUpdate "$(whoami)@ssh.example.com:22"
     cd ~/.ssh/
     # create new ssh-proxy-key
-    rm -f id_ed25519.proxy
-    rm -f id_ed25519.proxy.pub
-    ssh-keygen \
-        -C "your_email@example.com" \
-        -N "" \
-        -f id_ed25519.proxy \
-        -t ed25519
-    # copy authorized_keys.proxy, id_ed25519.proxy to proxy
+    shSshKeygen
+    # copy authorized_keys, id_ed25519 to proxy
     SSH_REVERSE_PROXY_HOST="$1"
-    PROXY_HOST="$(printf $SSH_REVERSE_PROXY_HOST | sed "s/:.*//")"
-    PROXY_PORT="$(printf $SSH_REVERSE_PROXY_HOST | sed "s/.*://")"
+    PROXY_HOST="$(printf "$SSH_REVERSE_PROXY_HOST" | sed "s/:.*//")"
+    PROXY_PORT="$(printf "$SSH_REVERSE_PROXY_HOST" | sed "s/.*://")"
     # bugfix - ssh might concat signature without adding newline
     touch known_hosts.proxy
     perl -pi -e "chomp if eof" known_hosts.proxy
     printf "\n" >> known_hosts.proxy
-    shSecretFileGet .ssh/id_ed25519.proxy0 id_ed25519.proxy0
+    # add ssh-remote-fingerprint to ssh-proxy-known-hosts
     ssh \
-        -i id_ed25519.proxy0 \
-        -o UserKnownHostsFile=known_hosts.proxy \
-        -p "$PROXY_PORT" "$PROXY_HOST" \
-        "(set -e
-            mkdir -p ~/.ssh
-            chmod 700 ~/.ssh
-            printf -- '\n$(cat id_ed25519.proxy.pub)\n' \
-                >> ~/.ssh/authorized_keys
-            printf -- '$(cat id_ed25519.proxy)\n' > ~/.ssh/id_ed25519
-            chmod 600 ~/.ssh/authorized_keys
-            chmod 600 ~/.ssh/id_ed25519
-        )"
+        -o ProxyCommand="cloudflared access ssh --hostname %h" \
+        -o UserKnownHostsFile=~/.ssh/known_hosts.proxy \
+        -p "$PROXY_PORT" "$PROXY_HOST" :
     # save ssh-proxy-fingerprint to known_hosts.proxy
     printf -- "$(tail -n 4 known_hosts.proxy)" > known_hosts.proxy
-    shSecretFileSet .ssh/known_hosts.proxy known_hosts.proxy
+    shSecretFileSet .ssh/known_hosts.proxy known_hosts
     # save ssh-proxy-key
-    shSecretFileSet .ssh/authorized_keys.proxy id_ed25519.proxy.pub
-    shSecretFileSet .ssh/id_ed25519.proxy id_ed25519.proxy
+    shSecretFileSet .ssh/authorized_keys.proxy id_ed25519.pub
+    shSecretFileSet .ssh/id_ed25519.proxy id_ed25519
     # save ssh-proxy-host
     shSecretTextSet SSH_REVERSE_PROXY_HOST "$SSH_REVERSE_PROXY_HOST"
     # git push
@@ -713,22 +703,6 @@ shSshKeygen() {(set -e
     cp id_ed25519.pub "id_ed25519.pub.$(date +"%Y%m%d_%H%M%S")"
 )}
 
-shSshProxyClient() {(set -e
-# this function will client-login to ssh-reverse-tunnel
-# example use:
-# shSshReverseTunnelClient user@localhost:53735
-    SSH_REVERSE_PROXY_HOST="$(shSecretTextGet SSH_REVERSE_PROXY_HOST)"
-    PROXY_HOST="$SSH_REVERSE_PROXY_HOST"
-    PROXY_PORT="$(printf $PROXY_HOST | sed "s/.*://")"
-    PROXY_HOST="$(printf $PROXY_HOST | sed "s/:.*//")"
-    ssh \
-        -i ~/.ssh/id_ed25519.proxy0 \
-        -o UserKnownHostsFile=~/.ssh/known_hosts.proxy \
-        -p "$PROXY_PORT" \
-        -t \
-        "$PROXY_HOST"
-)}
-
 shSshReverseTunnelClient() {(set -e
 # this function will client-login to ssh-reverse-tunnel
 # example use:
@@ -742,19 +716,16 @@ shSshReverseTunnelClient() {(set -e
     REMOTE_PORT="$(printf $REMOTE_HOST | sed "s/.*://")"
     REMOTE_HOST="$(printf $REMOTE_HOST | sed "s/:.*//")"
     ssh \
-        -i ~/.ssh/id_ed25519.proxy0 \
         -o UserKnownHostsFile=~/.ssh/known_hosts.proxy \
-        -p "$PROXY_PORT" \
         -t \
-        "$PROXY_HOST" \
-        ssh -p "$REMOTE_PORT" -t "$REMOTE_HOST" "$@"
+        -p "$REMOTE_PORT" "$REMOTE_HOST" "$@"
 )}
 
 shSshReverseTunnelServer() {(set -e
 # this function will create ssh-reverse-tunnel on server
     # google-colab-only
     # !(export MY_GITHUB_TOKEN=xxxxxxxx && curl -o ~/myci2.sh -s https://raw.githubusercontent.com/kaizhu256/myci2/alpha/myci2.sh && . ~/myci2.sh && shMyciInit && shSshReverseTunnelServer)
-    if [ "$COLAB_RELEASE_TAG" ]
+    if [ "$COLAB_RELEASE_TAG" ] || [ "$KAGGLE_CONTAINER_NAME" ]
     then
         GITHUB_ACTION=1
     fi
@@ -789,8 +760,9 @@ shSshReverseTunnelServer() {(set -e
     shSecretFileGet .ssh/known_hosts.proxy known_hosts
     # init ssh-reverse-tunnel
     SSH_REVERSE_PROXY_HOST="$(shSecretTextGet SSH_REVERSE_PROXY_HOST)"
-    PROXY_HOST="$(printf $SSH_REVERSE_PROXY_HOST | sed "s/:.*//")"
-    PROXY_PORT="$(printf $SSH_REVERSE_PROXY_HOST | sed "s/.*://")"
+    PROXY_HOST="$(printf "$SSH_REVERSE_PROXY_HOST" | sed "s/:.*//")"
+    PROXY_PORT="$(printf "$SSH_REVERSE_PROXY_HOST" | sed "s/.*://")"
+    REMOTE_HOST="$(whoami)@localhost"
     REMOTE_PORT="$(bash -c 'printf $((32768 + $RANDOM))')"
     SSH_REVERSE_REMOTE_HOST="$REMOTE_PORT:localhost:22"
     # create ssh-reverse-tunnel from remote to proxy
@@ -799,12 +771,23 @@ shSshReverseTunnelServer() {(set -e
         -R "$SSH_REVERSE_REMOTE_HOST" \
         -T \
         -f \
-        -p "$PROXY_PORT" \
-        "$PROXY_HOST" &>/dev/null
+        -o ProxyCommand="cloudflared access ssh --hostname %h" \
+        -p "$PROXY_PORT" "$PROXY_HOST" &>/dev/null
     # add ssh-remote-fingerprint to ssh-proxy-known-hosts
-    ssh -p "$PROXY_PORT" "$PROXY_HOST" \
-        ssh -o LogLevel=ERROR -o StrictHostKeyChecking=no -p "$REMOTE_PORT" \
-        "$(whoami)@localhost" : &>/dev/null
+    while (true)
+    do
+        if (ssh \
+            -o ProxyCommand="cloudflared access ssh --hostname %h" \
+            -p "$PROXY_PORT" "$PROXY_HOST" \
+            ssh \
+                -o StrictHostKeyChecking=no \
+                -o UserKnownHostsFile="~/.ssh/known_hosts.proxy" \
+                -p "$REMOTE_PORT" "$REMOTE_HOST" : &>/dev/null)
+        then
+            break
+        fi
+        sleep 5
+    done
     # loop-print to keep ci awake
     II=-10
     while [ "$II" -lt 240 ] \
@@ -813,7 +796,7 @@ shSshReverseTunnelServer() {(set -e
                 | grep -qv grep)) \
     do
         II=$((II + 1))
-        printf "    $II -- $(date) -- $(whoami)@localhost:$REMOTE_PORT\n"
+        printf "    $II -- $(date) -- $REMOTE_HOST:$REMOTE_PORT\n"
         if [ "$II" -lt 0 ]
         then
             sleep 5
