@@ -55,8 +55,6 @@ shMyciInit() {
 # this function will init myci2 in current environment
     (
     set -e
-    local FILE
-    local MODE_FORCE
     if [ "$1" = force ]
     then
         MODE_FORCE=1
@@ -96,6 +94,18 @@ shMyciInit() {
             printf "\n. ~/$FILE :\n" >> .bashrc
         fi
     done
+    # google-colab-only
+    if [ "$COLAB_RELEASE_TAG" ]
+    then
+        GITHUB_ACTION=1
+        if (node -e 'process.exit(process.version >= "v18")')
+        then
+            # https://github.com/nodesource/distributions
+            curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+            sudo apt-get install -y nodejs openssh-server sqlite3
+            sudo /etc/init.d/ssh start
+        fi
+    fi
     # github-action-only
     if ! ([ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ]) then return; fi
     # init .git/config
@@ -123,9 +133,6 @@ shMyciReverseUpdate() {
     fi
     git checkout HEAD .
     # ln file
-    local FILE
-    local FILE_HOME
-    local FILE_MYCI
     mkdir -p "$HOME/.vim"
     for FILE in \
         .vimrc \
@@ -160,9 +167,6 @@ shMyciUpdate() {
     git pull origin alpha
     git branch beta origin/beta 2>/dev/null || git push . origin/beta:beta
     # ln file
-    local FILE
-    local FILE_MYCI
-    local FILE_HOME
     mkdir -p "$HOME/.vim"
     for FILE in \
         .vimrc \
@@ -661,9 +665,9 @@ shSecretSshProxyUpdate() {(set -e
         -f id_ed25519.proxy \
         -t ed25519
     # copy authorized_keys.proxy, id_ed25519.proxy to proxy
-    local SSH_REVERSE_PROXY_HOST="$1"
-    local PROXY_HOST="$(printf $SSH_REVERSE_PROXY_HOST | sed "s/:.*//")"
-    local PROXY_PORT="$(printf $SSH_REVERSE_PROXY_HOST | sed "s/.*://")"
+    SSH_REVERSE_PROXY_HOST="$1"
+    PROXY_HOST="$(printf $SSH_REVERSE_PROXY_HOST | sed "s/:.*//")"
+    PROXY_PORT="$(printf $SSH_REVERSE_PROXY_HOST | sed "s/.*://")"
     # bugfix - ssh might concat signature without adding newline
     touch known_hosts.proxy
     perl -pi -e "chomp if eof" known_hosts.proxy
@@ -696,7 +700,6 @@ shSecretSshProxyUpdate() {(set -e
 
 shSshKeygen() {(set -e
 # this function will generate generic ssh key
-    local FILE
     cd ~/.ssh/
     rm -f id_ed25519
     rm -f id_ed25519.pub
@@ -714,10 +717,10 @@ shSshProxyClient() {(set -e
 # this function will client-login to ssh-reverse-tunnel
 # example use:
 # shSshReverseTunnelClient user@localhost:53735
-    local SSH_REVERSE_PROXY_HOST="$(shSecretTextGet SSH_REVERSE_PROXY_HOST)"
-    local PROXY_HOST="$SSH_REVERSE_PROXY_HOST"
-    local PROXY_PORT="$(printf $PROXY_HOST | sed "s/.*://")"
-    local PROXY_HOST="$(printf $PROXY_HOST | sed "s/:.*//")"
+    SSH_REVERSE_PROXY_HOST="$(shSecretTextGet SSH_REVERSE_PROXY_HOST)"
+    PROXY_HOST="$SSH_REVERSE_PROXY_HOST"
+    PROXY_PORT="$(printf $PROXY_HOST | sed "s/.*://")"
+    PROXY_HOST="$(printf $PROXY_HOST | sed "s/:.*//")"
     ssh \
         -i ~/.ssh/id_ed25519.proxy0 \
         -o UserKnownHostsFile=~/.ssh/known_hosts.proxy \
@@ -730,14 +733,14 @@ shSshReverseTunnelClient() {(set -e
 # this function will client-login to ssh-reverse-tunnel
 # example use:
 # shSshReverseTunnelClient user@localhost:53735
-    local REMOTE_HOST="$1"
+    REMOTE_HOST="$1"
     shift
-    local SSH_REVERSE_PROXY_HOST="$(shSecretTextGet SSH_REVERSE_PROXY_HOST)"
-    local PROXY_HOST="$SSH_REVERSE_PROXY_HOST"
-    local PROXY_PORT="$(printf $PROXY_HOST | sed "s/.*://")"
-    local PROXY_HOST="$(printf $PROXY_HOST | sed "s/:.*//")"
-    local REMOTE_PORT="$(printf $REMOTE_HOST | sed "s/.*://")"
-    local REMOTE_HOST="$(printf $REMOTE_HOST | sed "s/:.*//")"
+    SSH_REVERSE_PROXY_HOST="$(shSecretTextGet SSH_REVERSE_PROXY_HOST)"
+    PROXY_HOST="$SSH_REVERSE_PROXY_HOST"
+    PROXY_PORT="$(printf $PROXY_HOST | sed "s/.*://")"
+    PROXY_HOST="$(printf $PROXY_HOST | sed "s/:.*//")"
+    REMOTE_PORT="$(printf $REMOTE_HOST | sed "s/.*://")"
+    REMOTE_HOST="$(printf $REMOTE_HOST | sed "s/:.*//")"
     ssh \
         -i ~/.ssh/id_ed25519.proxy0 \
         -o UserKnownHostsFile=~/.ssh/known_hosts.proxy \
@@ -749,8 +752,19 @@ shSshReverseTunnelClient() {(set -e
 
 shSshReverseTunnelServer() {(set -e
 # this function will create ssh-reverse-tunnel on server
+    # google-colab-only
+    # !(export MY_GITHUB_TOKEN=xxxxxxxx && curl -o ~/myci2.sh -s https://raw.githubusercontent.com/kaizhu256/myci2/alpha/myci2.sh && . ~/myci2.sh && shMyciInit && shSshReverseTunnelServer)
+    if [ "$COLAB_RELEASE_TAG" ]
+    then
+        GITHUB_ACTION=1
+    fi
     # github-action-only
     if ! ([ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ]) then return 1; fi
+    # init mysecret2
+    if [ ! -d ~/.mysecret2 ]
+    then
+        shMyCiInit
+    fi
     # init openssh
     case "$(uname)" in
     MINGW*)
@@ -774,12 +788,11 @@ shSshReverseTunnelServer() {(set -e
     shSecretFileGet .ssh/id_ed25519.proxy id_ed25519
     shSecretFileGet .ssh/known_hosts.proxy known_hosts
     # init ssh-reverse-tunnel
-    local SSH_REVERSE_PROXY_HOST="$(shSecretTextGet SSH_REVERSE_PROXY_HOST)"
-    local II
-    local PROXY_HOST="$(printf $SSH_REVERSE_PROXY_HOST | sed "s/:.*//")"
-    local PROXY_PORT="$(printf $SSH_REVERSE_PROXY_HOST | sed "s/.*://")"
-    local REMOTE_PORT="$(bash -c 'printf $((32768 + $RANDOM))')"
-    local SSH_REVERSE_REMOTE_HOST="$REMOTE_PORT:localhost:22"
+    SSH_REVERSE_PROXY_HOST="$(shSecretTextGet SSH_REVERSE_PROXY_HOST)"
+    PROXY_HOST="$(printf $SSH_REVERSE_PROXY_HOST | sed "s/:.*//")"
+    PROXY_PORT="$(printf $SSH_REVERSE_PROXY_HOST | sed "s/.*://")"
+    REMOTE_PORT="$(bash -c 'printf $((32768 + $RANDOM))')"
+    SSH_REVERSE_REMOTE_HOST="$REMOTE_PORT:localhost:22"
     # create ssh-reverse-tunnel from remote to proxy
     ssh \
         -N \
@@ -794,7 +807,7 @@ shSshReverseTunnelServer() {(set -e
         "$(whoami)@localhost" : &>/dev/null
     # loop-print to keep ci awake
     II=-10
-    while [ "$II" -lt 120 ] \
+    while [ "$II" -lt 240 ] \
         && ([ "$II" -lt 0 ] \
             || (ps x | grep "$SSH_REVERSE_REMOTE_HOST\|/usr/bin/ssh$" \
                 | grep -qv grep)) \

@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2023.4.1-beta
+- add google-colab support
+
 # v2023.3.21
 - ci - update shell-function shRawLibFetch()
 
