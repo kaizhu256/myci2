@@ -9,7 +9,7 @@ shCiPreCustom() {(set -e
     fi
     case "$GITHUB_REF_NAME" in
     mysh)
-        shSshReverseTunnelServer
+        shSshCloudflareServer
         ;;
     esac
     if (! shCiMatrixIsmainName)
@@ -19,7 +19,7 @@ shCiPreCustom() {(set -e
     case "$GITHUB_REF_NAME" in
     alpha)
         # sync branch
-        shGitCmdWithGithubToken push origin alpha:mysh -f &
+        shGitCmdWithGithubToken push origin alpha:mysh -f
         # test
         # (
         #     git push -f origin alpha:kaizhu256/betadog/alpha

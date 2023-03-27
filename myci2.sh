@@ -104,9 +104,6 @@ shMyciInit() {
             curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
             sudo apt-get install -qq -y nodejs openssh-server sqlite3
             sudo /etc/init.d/ssh start
-            curl -L -O -s https://github.com/cloudflare/cloudflared/\
-releases/latest/download/cloudflared-linux-amd64.deb
-            sudo dpkg -i cloudflared-linux-amd64.deb
         fi
     fi
     # github-action-only
@@ -122,40 +119,6 @@ releases/latest/download/cloudflared-linux-amd64.deb
             --branch=alpha --depth=1 --single-branch
         chmod 700 .mysecret2
     fi
-    )
-    . ~/jslint_ci.sh :
-}
-
-shMyciReverseUpdate() {
-# this function will reverse-update myci2 from current dir
-    (
-    set -e
-    if [ ! -d .git ]
-    then
-        return
-    fi
-    git checkout HEAD .
-    # ln file
-    mkdir -p "$HOME/.vim"
-    for FILE in \
-        .vimrc \
-        jslint.mjs \
-        jslint_ci.sh \
-        jslint_wrapper_vim.vim \
-        myci2.sh
-    do
-        FILE_HOME="$HOME/$FILE"
-        FILE_MYCI="$HOME/myci2/$FILE"
-        case "$FILE" in
-        jslint_wrapper_vim.vim)
-            FILE_HOME="$HOME/.vim/$FILE"
-            ;;
-        esac
-        if [ -f "$FILE" ]
-        then
-            ln -f "$FILE" "$FILE_HOME" || true
-        fi
-    done
     )
     . ~/jslint_ci.sh :
 }
@@ -240,6 +203,40 @@ import moduleFs from "fs";
         fi
     done
     git --no-pager diff
+    )
+    . ~/jslint_ci.sh :
+}
+
+shMyciUpdateReverse() {
+# this function will reverse-update myci2 from current dir
+    (
+    set -e
+    if [ ! -d .git ]
+    then
+        return
+    fi
+    git checkout HEAD .
+    # ln file
+    mkdir -p "$HOME/.vim"
+    for FILE in \
+        .vimrc \
+        jslint.mjs \
+        jslint_ci.sh \
+        jslint_wrapper_vim.vim \
+        myci2.sh
+    do
+        FILE_HOME="$HOME/$FILE"
+        FILE_MYCI="$HOME/myci2/$FILE"
+        case "$FILE" in
+        jslint_wrapper_vim.vim)
+            FILE_HOME="$HOME/.vim/$FILE"
+            ;;
+        esac
+        if [ -f "$FILE" ]
+        then
+            ln -f "$FILE" "$FILE_HOME" || true
+        fi
+    done
     )
     . ~/jslint_ci.sh :
 }
@@ -624,8 +621,11 @@ shSecretFileSet() {(set -e
 shSecretGitPush() {(set -e
 # this function will git-commit and git-push .mysecret2
     cd ~/.mysecret2/
-    shJsonNormalize .mysecret2.json
-    shSecretEncryptFile
+    if [ -f .mysecret2.json ]
+    then
+        shJsonNormalize .mysecret2.json
+        shSecretEncryptFile
+    fi
     shGitCommitPushOrSquash "" 100
 )}
 
@@ -656,36 +656,173 @@ shSecretTextSet() {(set -e
     shSecretDecryptEncrypt shSecretTextSet "$1" "$2"
 )}
 
-shSecretSshProxyUpdate() {(set -e
-# this function will decrypt mysecret2, and update ssh-proxy-secrets
-# example use:
-# shSecretSshProxyUpdate "$(whoami)@ssh.example.com:22"
-    cd ~/.ssh/
-    # create new ssh-proxy-key
-    shSshKeygen
-    # copy authorized_keys, id_ed25519 to proxy
-    SSH_REVERSE_PROXY_HOST="$1"
-    PROXY_HOST="$(printf "$SSH_REVERSE_PROXY_HOST" | sed "s/:.*//")"
-    PROXY_PORT="$(printf "$SSH_REVERSE_PROXY_HOST" | sed "s/.*://")"
+shSshCloudflareClient() {(set -e
+# this function will client-login to ssh-server through cloudflare-tunnel
+    shSshCloudflareInstall
+    shSecretGitPull &>/dev/null || shSecretGitPull
+    shSecretFileGet .ssh/known_hosts.proxy ~/.ssh/known_hosts.proxy
+    ssh \
+        -o ProxyCommand="cloudflared access ssh --hostname %h" \
+        -o UserKnownHostsFile=~/.ssh/known_hosts.proxy \
+        -t \
+        "${SSH_CLOUDFLARE_HOST:-$(shSecretTextGet SSH_CLOUDFLARE_HOST)}" "$@"
+)}
+
+shSshCloudflareInstall() {(set -e
+# this function will install cloudflared binary
+    if (cloudflared --version)
+    then
+        return
+    fi
+    case "$(uname)" in
+    Darwin*)
+        curl -L -s \
+https://github.com/cloudflare/cloudflared/\
+releases/latest/download/cloudflared-darwin-amd64.tgz | tar -xz
+        chmod 755 cloudflared
+        mv cloudflared /usr/local/bin
+        ;;
+    Linux*)
+        curl -L -s -o cloudflared \
+https://github.com/cloudflare/cloudflared/\
+releases/latest/download/cloudflared-linux-amd64
+        chmod 755 cloudflared
+        mv cloudflared /usr/local/bin
+        ;;
+    *)
+        curl -L -s -o c:/windows/system32/cloudflared.exe \
+https://github.com/cloudflare/cloudflared/\
+releases/latest/download/cloudflared-windows-amd64.exe
+        ;;
+    esac
+    cloudflared --version 1>&2
+)}
+
+shSshCloudflareServer() {(set -e
+# this function will create cloudflare-tunnel on ssh-server
+    # google-colab-only
+    # !(export MY_GITHUB_TOKEN=xxxxxxxx && curl -o ~/myci2.sh -s https://raw.githubusercontent.com/kaizhu256/myci2/alpha/myci2.sh && . ~/myci2.sh && shMyciInit && shSshCloudflareServer)
+    if [ "$COLAB_RELEASE_TAG" ] || [ "$KAGGLE_CONTAINER_NAME" ]
+    then
+        GITHUB_ACTION=1
+    fi
+    # github-action-only
+    if ([ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ])
+    then
+        # init mysecret2
+        if [ ! -d ~/.mysecret2 ]
+        then
+            shMyCiInit
+        fi
+        # init openssh
+        case "$(uname)" in
+        MINGW*)
+            powershell \
+                "Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0"
+            printf "PubkeyAuthentication yes\n"> /c/programdata/ssh/sshd_config
+            powershell "Start-Service sshd" &>/dev/null
+            ;;
+        esac
+        # init secret
+        (
+        cd "$HOME/.mysecret2"
+        printf "$MY_GITHUB_TOKEN\n" > .my_github_token
+        chmod 600 .my_github_token
+        )
+        # init dir .ssh/
+        mkdir -p ~/.ssh/
+        chmod 700 ~/.ssh/
+        (
+        cd ~/.ssh/
+        shSecretFileGet .ssh/authorized_keys authorized_keys
+        shSecretFileGet .ssh/id_ed25519 id_ed25519
+        shSecretFileGet .ssh/known_hosts.proxy known_hosts.proxy
+        )
+    fi
+    # create cloudflare-tunnel
+    shSshCloudflareInstall
+    node --input-type=module --eval '
+import moduleChildProcess from "child_process";
+(async function () {
+    let hostname = "";
+    let result = "";
+    let whoami = process.argv[1];
+    await new Promise(function (resolve) {
+        moduleChildProcess.spawn(
+            "cloudflared",
+            ["tunnel", "--url", "ssh://localhost:22"],
+            {encoding: "utf8", stdio: ["ignore", "ignore", "overlapped"]}
+        ).on("exit", function (exitCode) {
+            console.error(`cloudflared exitCode=${exitCode}`);
+        }).stderr.on("data", function (chunk) {
+            if (hostname) {
+                return;
+            }
+            result += chunk;
+            hostname = (
+                /https:\/\/(.*?\.trycloudflare\.com)/
+            ).exec(result);
+            if (!hostname) {
+                return;
+            }
+            hostname = `${whoami}@${hostname[1]}`;
+            resolve();
+        });
+    });
+    await new Promise(function (resolve) {
+        moduleChildProcess.spawn(
+            "sh",
+            ["-c", (`
+(set -e
+    cd ~/myci2
+    . ./jslint_ci.sh
+    . ./myci2.sh
+    cd ~/.ssh
+    SSH_CLOUDFLARE_HOST="${hostname}"
     # bugfix - ssh might concat signature without adding newline
     touch known_hosts.proxy
     perl -pi -e "chomp if eof" known_hosts.proxy
     printf "\n" >> known_hosts.proxy
-    # add ssh-remote-fingerprint to ssh-proxy-known-hosts
-    ssh \
-        -o ProxyCommand="cloudflared access ssh --hostname %h" \
-        -o UserKnownHostsFile=~/.ssh/known_hosts.proxy \
-        -p "$PROXY_PORT" "$PROXY_HOST" :
-    # save ssh-proxy-fingerprint to known_hosts.proxy
+    # add ssh-proxy-fingerprint to ssh-proxy-known-hosts
+    while (true)
+    do
+        sleep 5
+        if (ssh \
+            -o ProxyCommand="cloudflared access ssh --hostname %h" \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=known_hosts.proxy \
+            "$SSH_CLOUDFLARE_HOST" :) &>/dev/null
+        then
+            break
+        fi
+    done
     printf -- "$(tail -n 4 known_hosts.proxy)" > known_hosts.proxy
-    shSecretFileSet .ssh/known_hosts.proxy known_hosts
-    # save ssh-proxy-key
-    shSecretFileSet .ssh/authorized_keys.proxy id_ed25519.pub
-    shSecretFileSet .ssh/id_ed25519.proxy id_ed25519
-    # save ssh-proxy-host
-    shSecretTextSet SSH_REVERSE_PROXY_HOST "$SSH_REVERSE_PROXY_HOST"
-    # git push
-    shSecretGitPush
+    shSecretFileSet .ssh/known_hosts.proxy known_hosts.proxy
+    shSecretTextSet SSH_CLOUDFLARE_HOST "$SSH_CLOUDFLARE_HOST"
+    shSecretGitPush || true
+    II=-10
+    while [ "$II" -lt 240 ]
+    do
+        II=$((II + 1))
+        printf "    $II -- $(date) -- \\"$SSH_CLOUDFLARE_HOST\\"\n" \
+            | sed -e "s|\.trycloudflare\.com||"
+        if [ "$II" -lt 0 ]
+        then
+            sleep 10
+        else
+            sleep 60
+        fi
+    done
+)
+            `)],
+            {stdio: ["ignore", 1, 2]}
+        ).on("exit", resolve);
+    });
+}());
+' "$(whoami)" || true # '
+    # killall -9 node
+    # taskkill //f //im node.exe
+    # taskkill /f /im node.exe
 )}
 
 shSshKeygen() {(set -e
@@ -701,109 +838,9 @@ shSshKeygen() {(set -e
     cp id_ed25519.pub authorized_keys
     cp id_ed25519 "id_ed25519.$(date +"%Y%m%d_%H%M%S")"
     cp id_ed25519.pub "id_ed25519.pub.$(date +"%Y%m%d_%H%M%S")"
-)}
-
-shSshReverseTunnelClient() {(set -e
-# this function will client-login to ssh-reverse-tunnel
-# example use:
-# shSshReverseTunnelClient user@localhost:53735
-    REMOTE_HOST="$1"
-    shift
-    SSH_REVERSE_PROXY_HOST="$(shSecretTextGet SSH_REVERSE_PROXY_HOST)"
-    PROXY_HOST="$SSH_REVERSE_PROXY_HOST"
-    PROXY_PORT="$(printf $PROXY_HOST | sed "s/.*://")"
-    PROXY_HOST="$(printf $PROXY_HOST | sed "s/:.*//")"
-    REMOTE_PORT="$(printf $REMOTE_HOST | sed "s/.*://")"
-    REMOTE_HOST="$(printf $REMOTE_HOST | sed "s/:.*//")"
-    ssh \
-        -o UserKnownHostsFile=~/.ssh/known_hosts.proxy \
-        -t \
-        -p "$REMOTE_PORT" "$REMOTE_HOST" "$@"
-)}
-
-shSshReverseTunnelServer() {(set -e
-# this function will create ssh-reverse-tunnel on server
-    # google-colab-only
-    # !(export MY_GITHUB_TOKEN=xxxxxxxx && curl -o ~/myci2.sh -s https://raw.githubusercontent.com/kaizhu256/myci2/alpha/myci2.sh && . ~/myci2.sh && shMyciInit && shSshReverseTunnelServer)
-    if [ "$COLAB_RELEASE_TAG" ] || [ "$KAGGLE_CONTAINER_NAME" ]
-    then
-        GITHUB_ACTION=1
-    fi
-    # github-action-only
-    if ! ([ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ]) then return 1; fi
-    # init mysecret2
-    if [ ! -d ~/.mysecret2 ]
-    then
-        shMyCiInit
-    fi
-    # init openssh
-    case "$(uname)" in
-    MINGW*)
-        powershell \
-            "Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0"
-        printf "PubkeyAuthentication yes\n"> /c/programdata/ssh/sshd_config
-        powershell "Start-Service sshd" &>/dev/null
-        ;;
-    esac
-    # init secret
-    (
-    cd "$HOME/.mysecret2"
-    printf "$MY_GITHUB_TOKEN\n" > .my_github_token
-    chmod 600 .my_github_token
-    )
-    # init dir .ssh/
-    mkdir -p ~/.ssh/
-    chmod 700 ~/.ssh/
-    cd ~/.ssh/
-    shSecretFileGet .ssh/authorized_keys.proxy authorized_keys
-    shSecretFileGet .ssh/id_ed25519.proxy id_ed25519
-    shSecretFileGet .ssh/known_hosts.proxy known_hosts
-    # init ssh-reverse-tunnel
-    SSH_REVERSE_PROXY_HOST="$(shSecretTextGet SSH_REVERSE_PROXY_HOST)"
-    PROXY_HOST="$(printf "$SSH_REVERSE_PROXY_HOST" | sed "s/:.*//")"
-    PROXY_PORT="$(printf "$SSH_REVERSE_PROXY_HOST" | sed "s/.*://")"
-    REMOTE_HOST="$(whoami)@localhost"
-    REMOTE_PORT="$(bash -c 'printf $((32768 + $RANDOM))')"
-    SSH_REVERSE_REMOTE_HOST="$REMOTE_PORT:localhost:22"
-    # create ssh-reverse-tunnel from remote to proxy
-    ssh \
-        -N \
-        -R "$SSH_REVERSE_REMOTE_HOST" \
-        -T \
-        -f \
-        -o ProxyCommand="cloudflared access ssh --hostname %h" \
-        -p "$PROXY_PORT" "$PROXY_HOST" &>/dev/null
-    # add ssh-remote-fingerprint to ssh-proxy-known-hosts
-    while (true)
-    do
-        if (ssh \
-            -o ProxyCommand="cloudflared access ssh --hostname %h" \
-            -p "$PROXY_PORT" "$PROXY_HOST" \
-            ssh \
-                -o StrictHostKeyChecking=no \
-                -o UserKnownHostsFile="~/.ssh/known_hosts.proxy" \
-                -p "$REMOTE_PORT" "$REMOTE_HOST" : &>/dev/null)
-        then
-            break
-        fi
-        sleep 5
-    done
-    # loop-print to keep ci awake
-    II=-10
-    while [ "$II" -lt 240 ] \
-        && ([ "$II" -lt 0 ] \
-            || (ps x | grep "$SSH_REVERSE_REMOTE_HOST\|/usr/bin/ssh$" \
-                | grep -qv grep)) \
-    do
-        II=$((II + 1))
-        printf "    $II -- $(date) -- $REMOTE_HOST:$REMOTE_PORT\n"
-        if [ "$II" -lt 0 ]
-        then
-            sleep 5
-        else
-            sleep 60
-        fi
-    done
-    # killall ssh
-    # powershell "taskkill /F /IM ssh.exe /T"
+    # save ssh-proxy-key
+    shSecretFileSet .ssh/authorized_keys id_ed25519.pub
+    shSecretFileSet .ssh/id_ed25519 id_ed25519
+    # git push
+    shSecretGitPush
 )}
