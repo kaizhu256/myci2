@@ -4,6 +4,7 @@
 - none
 
 # v2023.4.1-beta
+- ci - add python support
 - sh - add cloudflared-tunnel support
 - sh - add google-colab support
 

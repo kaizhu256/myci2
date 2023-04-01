@@ -94,17 +94,14 @@ shMyciInit() {
             printf "\n. ~/$FILE :\n" >> .bashrc
         fi
     done
-    # google-colab-only
-    if [ "$COLAB_RELEASE_TAG" ] || [ "$KAGGLE_CONTAINER_NAME" ]
+    # install nodejs
+    if ([ "$GITHUB_ACTION" ] \
+        && (node -e 'process.exit(!(process.version < "v18"))' &>/dev/null)
+    )
     then
-        GITHUB_ACTION=1
-        if (! sudo /etc/init.d/ssh start &>/dev/null)
-        then
-            # https://github.com/nodesource/distributions
-            curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-            sudo apt-get install -qq -y nodejs openssh-server sqlite3
-            sudo /etc/init.d/ssh start
-        fi
+        # https://github.com/nodesource/distributions
+        curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+        sudo apt-get install -qq -y nodejs
     fi
     # github-action-only
     if ! ([ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ]) then return; fi
@@ -702,9 +699,12 @@ shSshCloudflareServer() {(set -e
 # this function will create cloudflare-tunnel on ssh-server
     # google-colab-only
     # !(export MY_GITHUB_TOKEN=xxxxxxxx && curl -o ~/myci2.sh -s https://raw.githubusercontent.com/kaizhu256/myci2/alpha/myci2.sh && . ~/myci2.sh && shMyciInit && shSshCloudflareServer)
-    if [ "$COLAB_RELEASE_TAG" ] || [ "$KAGGLE_CONTAINER_NAME" ]
+    if ([ "$GITHUB_ACTION" ] \
+        && [ -d /etc/init.d ] \
+        && (! sudo /etc/init.d/ssh start &>/dev/null))
     then
-        GITHUB_ACTION=1
+        sudo apt-get install -qq -y nodejs openssh-server sqlite3
+        sudo /etc/init.d/ssh start
     fi
     # github-action-only
     if ([ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ])
