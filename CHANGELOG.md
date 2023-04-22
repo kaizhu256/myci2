@@ -3,7 +3,9 @@
 # Todo
 - none
 
-# v2023.4.1-beta
+# v2023.4.22
+- ci - add shell-function shCiPreCustom2() to setup python in custom-ci
+- ci - remove mandatory python ci
 - ci - add python support
 - sh - add cloudflared-tunnel support
 - sh - add google-colab support

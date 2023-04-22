@@ -667,7 +667,7 @@ shSshCloudflareClient() {(set -e
 
 shSshCloudflareInstall() {(set -e
 # this function will install cloudflared binary
-    if (cloudflared --version)
+    if (cloudflared --version &>/dev/null)
     then
         return
     fi

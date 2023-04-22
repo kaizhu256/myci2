@@ -68,7 +68,7 @@ function! MyCommentRegion(...)
         '<,'>s/^\(\s*\)\(\S\)/\1""!! \2/e
     "" comment #
     elseif a:1 == '#'
-        '<,'>s/^\(\s*\)\(\S\)/# !! \1\2/e
+        '<,'>s/^\(\s*\)\(\S\)/\1# !! \2/e
     "" comment %%
     elseif a:1 == '%'
         '<,'>s/^\(\s*\)\(\S\)/\1%%!! \2/e
@@ -285,13 +285,25 @@ function! SaveAndCpplint(bang)
     let &l:makeprg = "python \"" . $HOME . "/.vim/cpplint.py\""
         \ . " --filter=-whitespace/comments"
         \ . l:file
-    silent make!
-    cwindow
-    redraw!
+    silent make! | cwindow | redraw!
 endfunction
 
 "" create vim-command ":SaveAndCpplint"
 command! -nargs=* -bang SaveAndCpplint call SaveAndCpplint("<bang>")
+
+
+"" this function will pylint file of current buffer
+function! SaveAndPylint(bang)
+    "" save file
+    if a:bang == "!" | write! | else | write | endif
+    "" pylint file
+    let &l:errorformat = "%f:%l:%c: %m"
+    let &l:makeprg = "ruff \"" . fnamemodify(bufname("%"), ":p") . "\""
+    silent make! | cwindow | redraw!
+endfunction
+
+"" create vim-command ":SaveAndPylint"
+command! -nargs=* -bang SaveAndPylint call SaveAndPylint("<bang>")
 
 "" this function will jslint the file of current buffer after saving it.
 "" before using, please save jslint.mjs to ~/.vim/jslint.mjs, e.g.:
@@ -303,8 +315,14 @@ function! MySaveAndLint(bang)
         return
     endif
     "" jslint file
-    if &filetype == "javascript" && filereadable(expand("~/.vim/jslint_wrapper_vim.vim"))
+    if &filetype == "javascript"
+        \ && filereadable(expand("~/.vim/jslint_wrapper_vim.vim"))
         SaveAndJslint
+        return
+    endif
+    "" pylint file
+    if &filetype == "python"
+        SaveAndPylint
         return
     endif
     "" save file
@@ -318,6 +336,6 @@ endfunction
 "" init command :MySaveAndLint
 command! -nargs=* -bang MySaveAndLint call MySaveAndLint("<bang>")
 
-"" map vim-key-combo "<ctrl-s> <ctrl-j>" to ":MySaveAndLint"
+"" map vim-key-combo "<ctrl-s> <ctrl-l>" to ":MySaveAndLint"
 inoremap <c-s><c-l> <esc> :MySaveAndLint <cr>
 nnoremap <c-s><c-l> :MySaveAndLint <cr>

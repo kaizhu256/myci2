@@ -5,6 +5,8 @@ shCiPreCustom() {(set -e
     if (printf "$GITHUB_REF_NAME" | grep -q ".*/.*/.*")
     then
         shGithubCheckoutRemote "$GITHUB_REF_NAME"
+        GITHUB_REF_NAME="$(printf "$GITHUB_REF_NAME" | cut -d'/' -f3)"
+        sh jslint_ci.sh shCiPre
         return
     fi
     case "$GITHUB_REF_NAME" in
