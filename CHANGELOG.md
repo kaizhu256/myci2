@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2023.5.1-beta
+- ci - update cpplint.py to v1.6.1
+
 # v2023.4.22
 - ci - add shell-function shCiPreCustom2() to setup python in custom-ci
 - ci - remove mandatory python ci
