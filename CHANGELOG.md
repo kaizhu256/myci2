@@ -4,6 +4,7 @@
 - none
 
 # v2023.5.1-beta
+- ci - add indent.exe dependencies
 - ci - update cpplint.py to v1.6.1
 
 # v2023.4.22

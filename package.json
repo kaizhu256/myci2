@@ -1,6 +1,6 @@
 {
     "counter": 1,
-    "fileCount": 16,
+    "fileCount": 18,
     "name": "myci2",
     "repository": {
         "type": "git",
@@ -10,5 +10,5 @@
         "test": "sh jslint_ci.sh shCiBase",
         "test2": "sh jslint_ci.sh shCiBase"
     },
-    "version": "2023.4.22"
+    "version": "2023.5.1-beta"
 }
