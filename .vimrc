@@ -39,6 +39,9 @@ augroup My
     "" syntax=javascript
     autocmd BufNewFile,BufRead *.cjs,*.js,*.json,*.mjs
         \ setlocal filetype=javascript
+    "" syntax=python
+    autocmd BufNewFile,BufRead *.yaml
+        \ setlocal filetype=python
     "" syntax highlighting
     autocmd BufRead,BufWrite * syntax sync fromstart
     "" autocmd BufRead,BufWrite * syntax sync minlines=200

@@ -3,7 +3,8 @@
 # Todo
 - none
 
-# v2023.5.1-beta
+# v2023.5.30
+- ci - update .gitignore to exclude python build-files
 - ci - add indent.exe dependencies
 - ci - update cpplint.py to v1.6.1
 
