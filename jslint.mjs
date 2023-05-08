@@ -1584,7 +1584,9 @@ ${name}<span class="apidocSignatureSpan">${signature}</span>
         ), "\n");
         return result;
     }));
-    // init module_list
+
+// Init module_list.
+
     module_list = await Promise.all(module_list.map(async function ({
         pathname
     }) {
@@ -1990,8 +1992,11 @@ async function jslint_cli({
                 ).test(process_argv[1])
                 || mode_cli
             )
-            && moduleUrl.fileURLToPath(import_meta_url)
-            === modulePath.resolve(process_argv[1])
+            && (
+                moduleUrl.fileURLToPath(import_meta_url)
+                ===
+                modulePath.resolve(process_argv[1])
+            )
         )
         && !mode_cli
     ) {

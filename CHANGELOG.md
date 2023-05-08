@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2023.5.31-beta
+- ci - Rename shell-function shRawLibFetch() to shRollupFetch().
+
 # v2023.5.30
 - ci - update .gitignore to exclude python build-files
 - ci - add indent.exe dependencies
