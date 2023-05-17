@@ -4,6 +4,7 @@
 - none
 
 # v2023.5.31-beta
+- python - Add shell-function shLintPython().
 - jslint - Add grammar for regexp-named-capture-group and regexp-named-backreference.
 - ci - Rename shell-function shRawLibFetch() to shRollupFetch().
 
