@@ -3,7 +3,9 @@
 # Todo
 - none
 
-# v2023.5.31-beta
+# v2023.5.31
+- jslint - Add grammar for "export async function ...".
+- python - Migrate python-driver from pysqlite3 to cpython.
 - jslint - Add grammar for regexp-named-capture-group and regexp-named-backreference.
 - ci - Rename shell-function shRawLibFetch() to shRollupFetch().
 
