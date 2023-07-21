@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2023.7.21
+- jslint - Update jslint to v2023.6.21.
+
 # v2023.5.31
 - jslint - Add grammar for "export async function ...".
 - python - Migrate python-driver from pysqlite3 to cpython.
