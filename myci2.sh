@@ -335,7 +335,7 @@ async function cryptoJweDecryptEncrypt({
 
         textPlain = await webcrypto.subtle.decrypt(
             {
-                additionalData: header,
+                additionalData: Buffer.from(header),
                 iv,
                 name: "AES-GCM",
                 tagLength: 128
@@ -390,7 +390,7 @@ async function cryptoJweDecryptEncrypt({
 
         textCipher = await webcrypto.subtle.encrypt(
             {
-                additionalData: header,
+                additionalData: Buffer.from(header),
                 iv,
                 name: "AES-GCM",
                 tagLength: 128
@@ -527,7 +527,10 @@ function objectDeepCopyWithKeysSorted(obj) {
     );
     jwkKek = JSON.stringify({
         k: base64urlFromBuffer(
-            await webcrypto.subtle.digest("SHA-256", MY_GITHUB_TOKEN)
+            await webcrypto.subtle.digest(
+                "SHA-256",
+                Buffer.from(MY_GITHUB_TOKEN)
+            )
         ),
         kty: "oct"
     });

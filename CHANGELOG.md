@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2023.8.1-beta
+- ci - bugfix - Fix passing text instead of buffer to webcrypto.subtle.xxx().
+
 # v2023.7.21
 - jslint - Update jslint to v2023.6.21.
 
