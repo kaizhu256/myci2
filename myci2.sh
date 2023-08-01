@@ -396,7 +396,7 @@ async function cryptoJweDecryptEncrypt({
                 tagLength: 128
             },
             cek,
-            textPlain
+            Buffer.from(textPlain)
         );
         textCipher = Buffer.from(textCipher);
         tag = textCipher.slice(-16);
