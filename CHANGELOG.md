@@ -4,6 +4,7 @@
 - none
 
 # v2023.8.1-beta
+- license - Remove broken https://unlicense.org link.
 - ci - bugfix - Fix passing text instead of buffer to webcrypto.subtle.xxx().
 
 # v2023.7.21
