@@ -3,9 +3,10 @@
 # Todo
 - none
 
-# v2023.8.1-beta
-- license - Remove broken https://unlicense.org link.
-- ci - bugfix - Fix passing text instead of buffer to webcrypto.subtle.xxx().
+# v2023.8.20
+- jslint - Update jslint to v2023.8.20.
+- ci - Remove ci for nodejs-v19, and add ci for nodejs-v20.
+- ci - Remove broken-links to unlicense.org, failing http-link-check.
 
 # v2023.7.21
 - jslint - Update jslint to v2023.6.21.
