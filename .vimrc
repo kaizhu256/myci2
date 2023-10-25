@@ -300,7 +300,9 @@ function! SaveAndPylint(bang)
     "" save file
     if a:bang == "!" | write! | else | write | endif
     "" pylint file
-    let &l:errorformat = "%f:%l:%c: %m"
+    let &l:errorformat =
+        \ "%.%# %f:%l:%c: %m," .
+        \ "%f:%l:%c: %m"
     let &l:makeprg = "ruff \"" . fnamemodify(bufname("%"), ":p") . "\""
     silent make! | cwindow | redraw!
 endfunction

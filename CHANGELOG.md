@@ -3,6 +3,10 @@
 # Todo
 - none
 
+# v2023.10.24
+- jslint - Update jslint to v2023.10.24.
+- myci2 - Add file AppData.Local.Packages.Microsoft.WindowsTerminal_8wekyb3d8bbwe.LocalState.settings.json.
+
 # v2023.8.20
 - jslint - Update jslint to v2023.8.20.
 - ci - Remove ci for nodejs-v19, and add ci for nodejs-v20.

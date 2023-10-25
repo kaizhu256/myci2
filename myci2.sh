@@ -99,9 +99,22 @@ shMyciInit() {
         && (node -e 'process.exit(!(process.version < "v18"))' &>/dev/null)
     )
     then
-        # https://github.com/nodesource/distributions
-        curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-        sudo apt-get install -qq -y nodejs
+        # https://github.com/nodesource/distributions#installation-instructions
+        # Download and import the Nodesource GPG key
+        sudo apt-get update
+        sudo apt-get install -y ca-certificates curl gnupg
+        sudo mkdir -p /etc/apt/keyrings
+        curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+            | gpg --dearmor \
+            | sudo tee /etc/apt/keyrings/nodesource.gpg >/dev/null
+        # Create deb repository
+        NODE_MAJOR=18
+        printf "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] \
+https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main\n" \
+            | sudo tee /etc/apt/sources.list.d/nodesource.list
+        # Run Update and Install
+        sudo apt-get update
+        sudo apt-get install nodejs -y
     fi
     # github-action-only
     if ! ([ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ]) then return; fi
@@ -670,7 +683,7 @@ shSshCloudflareClient() {(set -e
 
 shSshCloudflareInstall() {(set -e
 # this function will install cloudflared binary
-    if (cloudflared --version &>/dev/null)
+    if (cloudflared --version)
     then
         return
     fi
@@ -689,7 +702,7 @@ releases/latest/download/cloudflared-linux-amd64
         chmod 755 cloudflared
         mv cloudflared /usr/local/bin
         ;;
-    *)
+    MINGW64_NT*)
         curl -L -s -o c:/windows/system32/cloudflared.exe \
 https://github.com/cloudflare/cloudflared/\
 releases/latest/download/cloudflared-windows-amd64.exe
@@ -731,6 +744,7 @@ shSshCloudflareServer() {(set -e
         cd "$HOME/.mysecret2"
         printf "$MY_GITHUB_TOKEN\n" > .my_github_token
         chmod 600 .my_github_token
+        # export MY_GITHUB_TOKEN="$(cat ~/.mysecret2/.my_github_token)"
         )
         # init dir .ssh/
         mkdir -p ~/.ssh/

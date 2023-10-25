@@ -1,0 +1,35 @@
+{
+    "$custom": "https://learn.microsoft.com/en-us/windows/terminal/customize-settings/profile-advanced",
+    "$help": "https://aka.ms/terminal-documentation",
+    "$scheme": "https://learn.microsoft.com/en-us/windows/terminal/customize-settings/color-schemes",
+    "defaultProfile": "{00000000-0000-6170-ba54-000000000001}",
+    "profiles": {
+        "defaults": {
+            "closeOnExit": "always",
+            "colorScheme": "Campbell Powershell",
+            "cursorColor": "#00FF00",
+            "cursorShape": "vintage",
+            "font": {
+                "face": "Lucida Console",
+                "size": 6
+            },
+            "historySize": 9001,
+            "opacity": 100,
+            "padding": "0, 0, 0, 0",
+            "snapOnInput": true,
+            "useAcrylic": false
+        },
+        "list": [
+            {
+                "commandline": "%PROGRAMFILES%/git/usr/bin/bash.exe -i -l",
+                "cursorHeight": 20,
+                "guid": "{00000000-0000-6170-ba54-000000000001}",
+                "historySize": 32768,
+                "icon": "%PROGRAMFILES%/Git/mingw64/share/git/git-for-windows.ico",
+                "name": "Bash",
+                "opacity": 100,
+                "startingDirectory": "%USERPROFILE%"
+            }
+        ]
+    }
+}
