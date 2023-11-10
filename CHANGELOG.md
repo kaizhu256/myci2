@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2023.11.1-beta
+- ci - Update mysh.
+
 # v2023.10.24
 - jslint - Update jslint to v2023.10.24.
 - myci2 - Add file AppData.Local.Packages.Microsoft.WindowsTerminal_8wekyb3d8bbwe.LocalState.settings.json.

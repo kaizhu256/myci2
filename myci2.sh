@@ -1,8 +1,8 @@
 #!/bin/sh
 
 # sh one-liner
-# curl -o ~/myci2.sh -s https://raw.githubusercontent.com/kaizhu256/myci2/alpha/myci2.sh && . ~/myci2.sh && shMyciInit
 # . ~/myci2.sh && shMyciUpdate
+# curl -o ~/myci2.sh -s https://raw.githubusercontent.com/kaizhu256/myci2/alpha/myci2.sh && . ~/myci2.sh && shMyciInit
 # shSecretGitPush
 
 shGithubBranchCopyAll() {(set -e
@@ -645,7 +645,10 @@ shSecretGitPush() {(set -e
 shSecretGitPull() {(set -e
 # this function will pull mysecret2 from github
     cd ~/.mysecret2/
-    git pull origin alpha
+    if (! git pull origin alpha)
+    then
+        git reset origin/alpha --hard
+    fi
     shSecretDecryptFile
 )}
 
@@ -691,7 +694,7 @@ shSshCloudflareInstall() {(set -e
     Darwin*)
         curl -L -s \
 https://github.com/cloudflare/cloudflared/\
-releases/latest/download/cloudflared-darwin-amd64.tgz | tar -xz
+releases/download/2023.8.2/cloudflared-darwin-amd64.tgz | tar -xz
         chmod 755 cloudflared
         mv cloudflared /usr/local/bin
         ;;
@@ -733,10 +736,26 @@ shSshCloudflareServer() {(set -e
         # init openssh
         case "$(uname)" in
         MINGW*)
-            powershell \
-                "Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0"
-            printf "PubkeyAuthentication yes\n"> /c/programdata/ssh/sshd_config
-            powershell "Start-Service sshd" &>/dev/null
+            curl -L -O -s https://github.com/\
+PowerShell/Win32-OpenSSH/releases/download/v9.2.2.0p1-Beta/OpenSSH-Win64.zip
+            unzip OpenSSH-Win64.zip &>/dev/null
+            (
+            cd OpenSSH-Win64/
+            ssh-keygen -q -N "" -t ed25519 -f ssh_host_ed25519_key
+            # bugfix - Permissions for 'ssh_host_ed25519_key' are too open.
+            powershell "
+icacls ssh_host_ed25519_key /inheritance:r
+start-process icacls.exe -ArgumentList \
+    'ssh_host_ed25519_key /grant:r \"$env:USERNAME\":\"(R)\"'
+            "
+            printf "
+AuthorizedKeysFile .ssh/authorized_keys
+HostKey ssh_host_ed25519_key
+PasswordAuthentication no
+PubkeyAuthentication yes
+            " > sshd_config
+            ./sshd.exe -f sshd_config &
+            )
             ;;
         esac
         # init secret
@@ -744,6 +763,8 @@ shSshCloudflareServer() {(set -e
         cd "$HOME/.mysecret2"
         printf "$MY_GITHUB_TOKEN\n" > .my_github_token
         chmod 600 .my_github_token
+        printf \
+'\nexport MY_GITHUB_TOKEN="$(cat ~/.mysecret2/.my_github_token)"\n' >> ~/.bashrc
         # export MY_GITHUB_TOKEN="$(cat ~/.mysecret2/.my_github_token)"
         )
         # init dir .ssh/
