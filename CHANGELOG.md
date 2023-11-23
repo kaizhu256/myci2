@@ -3,7 +3,8 @@
 # Todo
 - none
 
-# v2023.11.1-beta
+# v2023.11.22
+- ci - bugfix - Fix google-chrome unable to create screenshot because user-data-dir is /dev/null.
 - ci - Update mysh.
 
 # v2023.10.24

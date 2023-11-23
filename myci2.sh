@@ -694,7 +694,7 @@ shSshCloudflareInstall() {(set -e
     Darwin*)
         curl -L -s \
 https://github.com/cloudflare/cloudflared/\
-releases/download/2023.8.2/cloudflared-darwin-amd64.tgz | tar -xz
+releases/latest/download/cloudflared-darwin-amd64.tgz | tar -xz
         chmod 755 cloudflared
         mv cloudflared /usr/local/bin
         ;;
