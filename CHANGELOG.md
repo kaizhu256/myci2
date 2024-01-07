@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2023.12.20
+- jslint - bugfix - fix process.argv in shell-function shGithubFileDownloadUpload().
+
 # v2023.11.22
 - ci - bugfix - Fix google-chrome unable to create screenshot because user-data-dir is /dev/null.
 - ci - Update mysh.
