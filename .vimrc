@@ -224,6 +224,7 @@ if has("gui_running")
     "" colorscheme slate
     colorscheme torte
     "" colorscheme zellner
+    hi Search guibg=#000000 guifg=#ff0000
 endif
 if has("gui_gtk2")
     set guifont=Monospace:h8

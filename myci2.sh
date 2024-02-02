@@ -72,7 +72,7 @@ shMyciInit() {
     done
     . ~/jslint_ci.sh :
     # init myci2
-    if (git --version &>/dev/null)
+    if (git --version >/dev/null 2>&1)
     then
         if [ ! -d myci2 ] || [ "$MODE_FORCE" ]
         then
@@ -96,7 +96,11 @@ shMyciInit() {
     done
     # install nodejs
     if ([ "$GITHUB_ACTION" ] \
-        && (node -e 'process.exit(!(process.version < "v18"))' &>/dev/null)
+        && (
+            node -e \
+                'process.exit(Number(!(process.version < "v18")))' \
+                >/dev/null 2>&1
+        )
     )
     then
         # https://github.com/nodesource/distributions#installation-instructions
@@ -171,8 +175,8 @@ shMyciUpdate() {
     done
     ln -f "$HOME/jslint.mjs" "$HOME/.vim/jslint.mjs"
     # detect nodejs
-    if ! (node --version &>/dev/null \
-        || node.exe --version &>/dev/null)
+    if ! (node --version >/dev/null 2>&1 \
+        || node.exe --version >/dev/null 2>&1)
     then
         git --no-pager diff
         return
@@ -675,7 +679,7 @@ shSecretTextSet() {(set -e
 shSshCloudflareClient() {(set -e
 # this function will client-login to ssh-server through cloudflare-tunnel
     shSshCloudflareInstall
-    shSecretGitPull &>/dev/null || shSecretGitPull
+    shSecretGitPull >/dev/null 2>&1 || shSecretGitPull
     shSecretFileGet .ssh/known_hosts.proxy ~/.ssh/known_hosts.proxy
     ssh \
         -o ProxyCommand="cloudflared access ssh --hostname %h" \
@@ -720,7 +724,7 @@ shSshCloudflareServer() {(set -e
     # !(export MY_GITHUB_TOKEN=xxxxxxxx && curl -o ~/myci2.sh -s https://raw.githubusercontent.com/kaizhu256/myci2/alpha/myci2.sh && . ~/myci2.sh && shMyciInit && shSshCloudflareServer)
     if ([ "$GITHUB_ACTION" ] \
         && [ -d /etc/init.d ] \
-        && (! sudo /etc/init.d/ssh start &>/dev/null))
+        && (! sudo /etc/init.d/ssh start >/dev/null 2>&1))
     then
         sudo apt-get install -qq -y nodejs openssh-server sqlite3
         sudo /etc/init.d/ssh start
@@ -738,7 +742,7 @@ shSshCloudflareServer() {(set -e
         MINGW*)
             curl -L -O -s https://github.com/\
 PowerShell/Win32-OpenSSH/releases/download/v9.2.2.0p1-Beta/OpenSSH-Win64.zip
-            unzip OpenSSH-Win64.zip &>/dev/null
+            unzip OpenSSH-Win64.zip >/dev/null 2>&1
             (
             cd OpenSSH-Win64/
             ssh-keygen -q -N "" -t ed25519 -f ssh_host_ed25519_key
@@ -829,7 +833,7 @@ import moduleChildProcess from "child_process";
             -o ProxyCommand="cloudflared access ssh --hostname %h" \
             -o StrictHostKeyChecking=no \
             -o UserKnownHostsFile=known_hosts.proxy \
-            "$SSH_CLOUDFLARE_HOST" :) &>/dev/null
+            "$SSH_CLOUDFLARE_HOST" :) >/dev/null 2>&1
         then
             break
         fi
