@@ -121,7 +121,7 @@ https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main\n" \
         sudo apt-get install nodejs -y
     fi
     # github-action-only
-    if ! ([ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ]) then return; fi
+    if ! ([ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ]); then return; fi
     # init .git/config
     git config --global user.email "github-actions@users.noreply.github.com"
     git config --global user.name "github-actions"
@@ -636,20 +636,24 @@ shSecretFileSet() {(set -e
 )}
 
 shSecretGitPush() {(set -e
-# this function will git-commit and git-push .mysecret2
+# this function will git-commit-and-push mysecret2
     cd ~/.mysecret2/
     if [ -f .mysecret2.json ]
     then
         shJsonNormalize .mysecret2.json
         shSecretEncryptFile
     fi
-    shGitCommitPushOrSquash "" 100
+    if (! shGitCommitPushOrSquash "" 100)
+    then
+        shSecretGitPull
+        shGitCommitPushOrSquash "" 100
+    fi
 )}
 
 shSecretGitPull() {(set -e
-# this function will pull mysecret2 from github
+# this function will git-pull mysecret2
     cd ~/.mysecret2/
-    if (! git pull origin alpha)
+    if (! shGitCmdWithGithubToken pull origin alpha)
     then
         git reset origin/alpha --hard
     fi

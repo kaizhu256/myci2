@@ -3,7 +3,7 @@
 # Todo
 - none
 
-# v2024.2.1-beta
+# v2024.2.20
 - ci - Update github-ci for actions/cache, actions/setup-python from nodejs v16 to nodejs v20.
 - ci - Update shell-function shRollupFetch() to fix blank date-committed.
 

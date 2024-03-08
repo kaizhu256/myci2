@@ -1,7 +1,7 @@
 shCiPreCustom() {(set -e
 # this function will run pre-ci-custom
     # github-action-only
-    if ! ([ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ]) then return 1; fi
+    if ! ([ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ]); then return 1; fi
     if (printf "$GITHUB_REF_NAME" | grep -q ".*/.*/.*")
     then
         shGithubCheckoutRemote "$GITHUB_REF_NAME"
