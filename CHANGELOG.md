@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2024.4.1-beta
+- jslint - Update jslint to v2024.4.1-beta.
+
 # v2024.3.25
 - jslint-ci - Add shell-functions shGitPullrequestCleanup(), shGitPullrequest() to automatically cleanup or create-and-push github-pull-commit to origin/alpha.
 - ci - Fix tmpdir in shell-function shBrowserScreenshot().
