@@ -3,7 +3,7 @@
 # Todo
 - none
 
-# v2024.4.1-beta
+# v2024.4.24
 - jslint - Update jslint to v2024.4.1-beta.
 
 # v2024.3.25
