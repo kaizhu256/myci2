@@ -14,7 +14,7 @@ shGithubBranchCopyAll() {(set -e
     rm -rf __tmp1
     shGitCmdWithGithubToken clone "https://github.com/$GITHUB_REPO1" __tmp1
     (
-    cd __tmp1
+    cd __tmp1/
     for BRANCH in $(git branch -r | tail -n +2)
     do
         BRANCH="$(printf "$BRANCH" | sed -e "s|^origin/||")"
@@ -60,7 +60,7 @@ shMyciInit() {
         MODE_FORCE=1
         shift
     fi
-    cd ~
+    cd ~/
     # init jslint_ci.sh
     for FILE in .screenrc .vimrc jslint_ci.sh
     do
@@ -141,12 +141,13 @@ shMyciUpdate() {
 # this function will update myci2 in current dir
     (
     set -e
-    [ -d .git ] && [ -f jslint_ci.sh ] # git-repo-only
     # sync origin
+    [ -d .git ] # git-repo-only
     git fetch origin alpha beta master
     git pull origin alpha
     git branch beta origin/beta 2>/dev/null || git push . origin/beta:beta
     # ln file
+    [ -f jslint_ci.sh ] # jslint-ci-only
     mkdir -p "$HOME/.vim"
     for FILE in \
         .vimrc \
@@ -188,9 +189,13 @@ shMyciUpdate() {
         .github/workflows/publish.yml \
         .gitignore
     do
+        DIRNAME="$(dirname "$FILE")"
         if [ ! -f "$FILE" ]
         then
-            cp "$HOME/myci2/$FILE" "$FILE"
+            if [ -d "$DIRNAME" ]
+            then
+                cp "$HOME/myci2/$FILE" "$FILE"
+            fi
         else
             node --input-type=module --eval '
 import moduleAssert from "assert";
@@ -713,7 +718,7 @@ releases/latest/download/cloudflared-linux-amd64
         chmod 755 cloudflared
         mv cloudflared /usr/local/bin
         ;;
-    MINGW64_NT*)
+    MINGW*)
         curl -L -s -o c:/windows/system32/cloudflared.exe \
 https://github.com/cloudflare/cloudflared/\
 releases/latest/download/cloudflared-windows-amd64.exe
@@ -726,13 +731,6 @@ shSshCloudflareServer() {(set -e
 # this function will create cloudflare-tunnel on ssh-server
     # google-colab-only
     # !(export MY_GITHUB_TOKEN=xxxxxxxx && curl -o ~/myci2.sh -s https://raw.githubusercontent.com/kaizhu256/myci2/alpha/myci2.sh && . ~/myci2.sh && shMyciInit && shSshCloudflareServer)
-    if ([ "$GITHUB_ACTION" ] \
-        && [ -d /etc/init.d ] \
-        && (! sudo /etc/init.d/ssh start >/dev/null 2>&1))
-    then
-        sudo apt-get install -qq -y nodejs openssh-server sqlite3
-        sudo /etc/init.d/ssh start
-    fi
     # github-action-only
     if ([ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ])
     then
@@ -741,11 +739,22 @@ shSshCloudflareServer() {(set -e
         then
             shMyCiInit
         fi
-        # init openssh
+        # init sshd
         case "$(uname)" in
+        Darwin*)
+            sudo systemsetup -setremotelogin on >/dev/null 2>&1
+            sudo launchctl unload /System/Library/LaunchDaemons/ssh.plist \
+                >/dev/null 2>&1
+            sudo launchctl load -w /System/Library/LaunchDaemons/ssh.plist \
+                >/dev/null 2>&1
+            ;;
+        Linux*)
+            # sudo apt-get install -qq -y openssh-server
+            sudo /etc/init.d/ssh start >/dev/null 2>&1
+            ;;
         MINGW*)
             curl -L -O -s https://github.com/\
-PowerShell/Win32-OpenSSH/releases/download/v9.2.2.0p1-Beta/OpenSSH-Win64.zip
+PowerShell/Win32-OpenSSH/releases/latest/download/OpenSSH-Win64.zip
             unzip OpenSSH-Win64.zip >/dev/null 2>&1
             (
             cd OpenSSH-Win64/
@@ -762,13 +771,13 @@ HostKey ssh_host_ed25519_key
 PasswordAuthentication no
 PubkeyAuthentication yes
             " > sshd_config
-            ./sshd.exe -f sshd_config &
+            ./sshd.exe -f sshd_config >/dev/null 2>&1 &
             )
             ;;
         esac
         # init secret
         (
-        cd "$HOME/.mysecret2"
+        cd "$HOME/.mysecret2/"
         printf "$MY_GITHUB_TOKEN\n" > .my_github_token
         chmod 600 .my_github_token
         printf \
@@ -812,6 +821,7 @@ import moduleChildProcess from "child_process";
                 return;
             }
             hostname = `${whoami}@${hostname[1]}`;
+            console.error(hostname.replace(".trycloudflare.com", ""));
             resolve();
         });
     });
@@ -820,10 +830,10 @@ import moduleChildProcess from "child_process";
             "sh",
             ["-c", (`
 (set -e
-    cd ~/myci2
+    cd ~/myci2/
     . ./jslint_ci.sh
     . ./myci2.sh
-    cd ~/.ssh
+    cd ~/.ssh/
     SSH_CLOUDFLARE_HOST="${hostname}"
     # bugfix - ssh might concat signature without adding newline
     touch known_hosts.proxy
