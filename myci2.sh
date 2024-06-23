@@ -3,6 +3,8 @@
 # sh one-liner
 # . ~/myci2.sh && shMyciUpdate
 # curl -o ~/myci2.sh -s https://raw.githubusercontent.com/kaizhu256/myci2/alpha/myci2.sh && . ~/myci2.sh && shMyciInit
+# sh jslint_ci.sh shGithubWorkflowDispatch kaizhu256/myci2 mysh # --ssl-no-revoke
+# shSecretGitPull
 # shSecretGitPush
 
 shGithubBranchCopyAll() {(set -e
@@ -145,7 +147,10 @@ shMyciUpdate() {
     [ -d .git ] # git-repo-only
     git fetch origin alpha beta master
     git pull origin alpha
-    git branch beta origin/beta 2>/dev/null || git push . origin/beta:beta
+    if (git branch -r | grep -q origin/beta)
+    then
+        git branch beta origin/beta 2>/dev/null || git push . origin/beta:beta
+    fi
     # ln file
     [ -f jslint_ci.sh ] # jslint-ci-only
     mkdir -p "$HOME/.vim"
@@ -705,11 +710,12 @@ shSshCloudflareInstall() {(set -e
     fi
     case "$(uname)" in
     Darwin*)
-        curl -L -s \
-https://github.com/cloudflare/cloudflared/\
-releases/latest/download/cloudflared-darwin-amd64.tgz | tar -xz
-        chmod 755 cloudflared
-        mv cloudflared /usr/local/bin
+        brew install cloudflared
+#         curl -L -s \
+# https://github.com/cloudflare/cloudflared/\
+# releases/latest/download/cloudflared-darwin-amd64.tgz | tar -xz
+#         chmod 755 cloudflared
+#         mv cloudflared /usr/local/bin
         ;;
     Linux*)
         curl -L -s -o cloudflared \
@@ -807,9 +813,11 @@ import moduleChildProcess from "child_process";
             "cloudflared",
             ["tunnel", "--url", "ssh://localhost:22"],
             {encoding: "utf8", stdio: ["ignore", "ignore", "overlapped"]}
+            // {encoding: "utf8", stdio: ["ignore", 1, "overlapped"]} // debug
         ).on("exit", function (exitCode) {
             console.error(`cloudflared exitCode=${exitCode}`);
         }).stderr.on("data", function (chunk) {
+            // process.stderr.write(chunk); // debug
             if (hostname) {
                 return;
             }
@@ -848,6 +856,8 @@ import moduleChildProcess from "child_process";
             -o StrictHostKeyChecking=no \
             -o UserKnownHostsFile=known_hosts.proxy \
             "$SSH_CLOUDFLARE_HOST" :) >/dev/null 2>&1
+            # "$SSH_CLOUDFLARE_HOST" :) # debug
+            # -vvv "$SSH_CLOUDFLARE_HOST" :) # debug
         then
             break
         fi
