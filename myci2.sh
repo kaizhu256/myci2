@@ -265,6 +265,20 @@ shMyciUpdateReverse() {
     . ~/jslint_ci.sh :
 }
 
+shRollupUpgrade() {(set -e
+# This function will upgrade $VERSION1 to version $VERSION2 in $FILE_LIST.
+    VERSION1="$(printf "$1" | sed "s|\.|\\\\.|g")"
+    VERSION2="$(printf "$2" | sed "s|\.|\\\\.|g")"
+    FILE_LIST="$3"
+    printf "\n" && (git grep "$VERSION1" || true) && printf "\n"
+    read -p "Press Enter to sed $FILE_LIST:"
+    for FILE in $FILE_LIST
+    do
+        sed -i -e "s|\<$VERSION1\>|$VERSION2|g" "$FILE"
+    done
+    printf "\n" && (git grep "$VERSION1" || true) && printf "\n"
+)}
+
 shSecretDecryptEncrypt() {(set -e
 # this function will jwe-decrypt/jwe-encrypt mysecret2 using $MY_GITHUB_TOKEN
     shGithubTokenExport

@@ -7,6 +7,7 @@
 - jslint - Upgrade to jslint-v2024.6.1-beta.
 
 # v2024.4.24
+- ci - Add shell-function shRollupUpgrade().
 - jslint - Update jslint to v2024.4.1-beta.
 
 # v2024.3.25
