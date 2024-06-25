@@ -3,7 +3,8 @@
 # Todo
 - none
 
-# v2024.6.1-beta
+# v2024.6.25
+- jslint - Remove unnecessary shell-function shCurlExe().
 - jslint - Upgrade to jslint-v2024.6.1-beta.
 
 # v2024.4.24
