@@ -176,7 +176,8 @@ shMyciUpdate() {
         fi
         if [ -f "$FILE" ]
         then
-            ln -f "$FILE_HOME" "$FILE"
+            # allow hard-link failure due to different drives
+            ln -f "$FILE_HOME" "$FILE" || true
         fi
     done
     ln -f "$HOME/jslint.mjs" "$HOME/.vim/jslint.mjs"

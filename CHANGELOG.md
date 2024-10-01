@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2024.9.30
+- ci - Update function shMyciUpdate() to allow hard-link failure due to different drives.
+
 # v2024.6.25
 - jslint - Remove unnecessary shell-function shCurlExe().
 - jslint - Upgrade to jslint-v2024.6.1-beta.
