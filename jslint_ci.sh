@@ -1456,7 +1456,9 @@ import moduleUrl from "url";
             return;
         }
         // replace trailing "/" with "/index.html"
-        file = pathname.slice(1).replace((/\/$|^$/m), "./index.html");
+        file = pathname.slice(1).replace((
+            /\/$|^$/m
+        ), "./index.html");
         // resolve file
         file = modulePath.resolve(file);
         // security - disable parent-directory lookup
