@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2024.10.23
+- ci - Update shell-function shHttpFileServer() to auto-serve /index.html, when url-path is root /.
+
 # v2024.9.30
 - ci - Update function shMyciUpdate() to allow hard-link failure due to different drives.
 
