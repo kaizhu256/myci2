@@ -10,5 +10,5 @@
         "test": "sh jslint_ci.sh shCiBase",
         "test2": "sh jslint_ci.sh shCiBase"
     },
-    "version": "2024.10.23"
+    "version": "2024.11.1-beta"
 }
