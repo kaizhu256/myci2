@@ -3,8 +3,8 @@
 # Todo
 - none
 
-# v2024.11.1-beta
-- jslint - Upgrade to jslint-v2024.11.1-beta.
+# v2024.11.24
+- jslint - Upgrade to jslint-v2024.11.24.
 
 # v2024.10.23
 - ci - Update shell-function shHttpFileServer() to auto-serve /index.html, when url-path is root /.
