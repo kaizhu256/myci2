@@ -3,7 +3,7 @@
 # Todo
 - none
 
-# v2024.12.1-beta
+# v2024.12.25
 - ci - Upgrade python used in ci to v3.12.
 - ci - Auto-create asset_image_logo_256.png from asset_image_logo_256.html.
 - ci - Fix shell-function shRollupFetch() from making excessive github-api-request.
