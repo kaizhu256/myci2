@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2025.2.1-beta
+- ci - Upgrade nodejs used in ci to v22.
+
 # v2024.12.25
 - ci - Upgrade python used in ci to v3.12.
 - ci - Auto-create asset_image_logo_256.png from asset_image_logo_256.html.
