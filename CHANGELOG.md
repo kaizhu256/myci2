@@ -3,7 +3,7 @@
 # Todo
 - none
 
-# v2025.2.1-beta
+# v2025.2.28
 - jslint - Cleanup ci-shell-function shRollupFetch().
 - jslint - Update ci-shell-function shDirHttplinkValidate() with pragma <\!!--novalidate--\>.
 - ci - Upgrade nodejs used in ci to v22.
