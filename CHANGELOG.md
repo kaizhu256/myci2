@@ -4,7 +4,8 @@
 - none
 
 # v2025.2.1-beta
-- jslint - Update shell-function shDirHttplinkValidate() with pragma <\!!--novalidate--\>.
+- jslint - Cleanup ci-shell-function shRollupFetch().
+- jslint - Update ci-shell-function shDirHttplinkValidate() with pragma <\!!--novalidate--\>.
 - ci - Upgrade nodejs used in ci to v22.
 
 # v2024.12.25
