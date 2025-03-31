@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2025.3.1-beta
+- ubuntu-ci - bugfix - Fix out-of-date apt-list when installing graphicsmagick.
+
 # v2025.2.28
 - jslint - Cleanup ci-shell-function shRollupFetch().
 - jslint - Update ci-shell-function shDirHttplinkValidate() with pragma <\!!--novalidate--\>.
