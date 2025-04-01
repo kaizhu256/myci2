@@ -3,7 +3,8 @@
 # Todo
 - none
 
-# v2025.3.1-beta
+# v2025.3.31
+- jslint - Upgrade to jslint-v2025.3.31.
 - ubuntu-ci - bugfix - Fix out-of-date apt-list when installing graphicsmagick.
 
 # v2025.2.28
