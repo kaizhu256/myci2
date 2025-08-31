@@ -33,6 +33,9 @@ augroup My
     autocmd!
     "" autochdir
     autocmd BufEnter * silent! lcd %:p:h
+    "" syntax=asm
+    autocmd BufNewFile,BufRead *.ct
+        \ setlocal filetype=asm
     "" syntax=c
     autocmd BufNewFile,BufRead *.h
         \ setlocal filetype=c
@@ -172,6 +175,7 @@ inoremap <c-e> <c-o>$
 inoremap <c-k> <c-o>D
 "" non-recursive remap
 nnoremap <f12> <esc> :syntax sync fromstart<cr>
+nnoremap <leader>jp :%!python -m json.tool<CR>
 nnoremap <silent> !bc :bprevious<bar>split<bar>bnext<bar>bwipeout!<cr>
 nnoremap <silent> "+ :call MyStringifyRegion("+")<cr>
 nnoremap <silent> "\ :call MyStringifyRegion("\\")<cr>
@@ -245,7 +249,6 @@ if filereadable(expand('~/.vim/jslint_wrapper_vim.vim'))
     source ~/.vim/jslint_wrapper_vim.vim
 endif
 
-
 "" this function will cpplint file of current buffer
 "" before using, please save cpplint.py to ~/.vim/cpplint.py, e.g.:
 "" curl -L https://raw.githubusercontent.com/cpplint/cpplint/1.5.5/cpplint.py > ~/.vim/cpplint.py
@@ -294,7 +297,6 @@ endfunction
 
 "" create vim-command ":SaveAndCpplint"
 command! -nargs=* -bang SaveAndCpplint call SaveAndCpplint("<bang>")
-
 
 "" this function will pylint file of current buffer
 function! SaveAndPylint(bang)

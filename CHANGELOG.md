@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2025.8.30
+- .vimrc - Update .vimrc.
+
 # v2025.3.31
 - jslint - Upgrade to jslint-v2025.3.31.
 - ubuntu-ci - bugfix - Fix out-of-date apt-list when installing graphicsmagick.
