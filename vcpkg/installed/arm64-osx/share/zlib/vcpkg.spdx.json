@@ -3,13 +3,13 @@
   "spdxVersion": "SPDX-2.2",
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
-  "documentNamespace": "https://spdx.org/spdxdocs/zlib-arm64-osx-1.3.1-0b2c2f13-9d8a-4f92-9f20-6c1b9525233b",
+  "documentNamespace": "https://spdx.org/spdxdocs/zlib-arm64-osx-1.3.1-58af117a-1fba-4aa1-8e0e-e9de42708910",
   "name": "zlib:arm64-osx@1.3.1 7dcbca85c49c96b7e7d0f95f4e86eb106e0f4b76342a743f5863d7b7cc0a03ed",
   "creationInfo": {
     "creators": [
       "Tool: vcpkg-2025-09-03-4580816534ed8fd9634ac83d46471440edd82dfe"
     ],
-    "created": "2025-09-23T03:01:44Z"
+    "created": "2025-09-23T03:08:59Z"
   },
   "relationships": [
     {
@@ -285,7 +285,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "9eda897c7961a12d354fcc7ec61217f23aedc3661ba6f26943aa7c3f16709262"
+          "checksumValue": "523a28867b5070b292e3c8c728ccac1071cbb5b19daba31e0a7ecccdb80f4917"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -309,7 +309,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "550e752b6bdb7d6a315103a3252a26c822660cfcff47c92383f9b6992f6c81eb"
+          "checksumValue": "d0d69a567d8dbf2bace24e3ece3c6155f964a169abd94b0a93369f8403260de4"
         }
       ],
       "licenseConcluded": "NOASSERTION",
