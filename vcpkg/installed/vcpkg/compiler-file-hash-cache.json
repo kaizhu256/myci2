@@ -1,8 +1,14 @@
 {
-  "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe" : 
+  "/usr/bin/c++" : 
   {
-    "hash" : "3c62be3c178526242f2c45cf8ccbe3c55048a1a8",
-    "size" : 677464,
-    "timestamp" : 1757283627
+    "hash" : "037f33d4670b49936169356044fef0a42408d189",
+    "size" : 1027128,
+    "timestamp" : 1725461054
+  },
+  "/usr/bin/cc" : 
+  {
+    "hash" : "560b01b6ffad8a6d8be857f99362fa9c38a8b6b7",
+    "size" : 1023032,
+    "timestamp" : 1725461054
   }
 }
