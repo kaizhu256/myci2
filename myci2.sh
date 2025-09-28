@@ -4,6 +4,7 @@
 # . ~/myci2.sh && shMyciUpdate
 # curl -o ~/myci2.sh -s https://raw.githubusercontent.com/kaizhu256/myci2/alpha/myci2.sh && . ~/myci2.sh && shMyciInit
 # sh jslint_ci.sh shGithubWorkflowDispatch kaizhu256/myci2 mysh
+# sh jslint_ci.sh shGithubWorkflowDispatch kaizhu256/myci2 vcpkg
 # shSecretGitPull
 # shSecretGitPush
 

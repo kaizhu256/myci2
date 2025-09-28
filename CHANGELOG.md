@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2025.9.1-beta
+- coverage - Add coverage-directives '/*coverage-disable*/', '/*coverage-enable*/'. '//coverage-ignore-line'.
+
 # v2025.8.30
 - .vimrc - Update .vimrc.
 
