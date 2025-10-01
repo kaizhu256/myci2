@@ -3,7 +3,8 @@
 # Todo
 - none
 
-# v2025.9.1-beta
+# v2025.9.30
+- ci - Update shell-function shRunWithCoverage() to reduce size of string/argument passed to nodejs by using 1-space-indent.
 - coverage - Add coverage-directives '/*coverage-disable*/', '/*coverage-enable*/'. '//coverage-ignore-line'.
 
 # v2025.8.30
