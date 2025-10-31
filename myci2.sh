@@ -282,7 +282,7 @@ shRollupUpgrade() {(set -e
 )}
 
 shSecretDecryptEncrypt() {(set -e
-# this function will jwe-decrypt/jwe-encrypt mysecret2 using $MY_GITHUB_TOKEN
+# this function will jwe-decrypt/jwe-encrypt mysecret2 using $MY_SECRET_KEY
     shGithubTokenExport
     node --input-type=module --eval '
 import moduleAssert from "assert";
@@ -510,6 +510,7 @@ function objectDeepCopyWithKeysSorted(obj) {
         HOME,
         MY_GITHUB_TOKEN
     } = process.env;
+    let MY_SECRET_KEY = MY_GITHUB_TOKEN;
     let {
         argv
     } = process;
@@ -562,17 +563,17 @@ function objectDeepCopyWithKeysSorted(obj) {
     }
 
 // Get 256-bit jwk-formatted-key-encryption-key jwkKek,
-// from sha256-hash of MY_GITHUB_TOKEN.
+// from sha256-hash of MY_SECRET_KEY.
 
     moduleAssert.ok(
-        MY_GITHUB_TOKEN.length >= 16,
-        "cryptoJweDecryptEncrypt - MY_GITHUB_TOKEN length too short"
+        MY_SECRET_KEY.length >= 16,
+        "cryptoJweDecryptEncrypt - MY_SECRET_KEY length too short"
     );
     jwkKek = JSON.stringify({
         k: base64urlFromBuffer(
             await webcrypto.subtle.digest(
                 "SHA-256",
-                Buffer.from(MY_GITHUB_TOKEN)
+                Buffer.from(MY_SECRET_KEY)
             )
         ),
         kty: "oct"
@@ -642,12 +643,12 @@ function objectDeepCopyWithKeysSorted(obj) {
 )}
 
 shSecretDecryptFile() {(set -e
-# this function will decrypt myscret2 using jwe and $MY_GITHUB_TOKEN
+# this function will decrypt myscret2 using jwe and $MY_SECRET_KEY
     shSecretDecryptEncrypt shSecretDecryptFile
 )}
 
 shSecretEncryptFile() {(set -e
-# this function will encrypt mysecret2 using jwe and $MY_GITHUB_TOKEN
+# this function will encrypt mysecret2 using jwe and $MY_SECRET_KEY
     shSecretDecryptEncrypt shSecretEncryptFile
 )}
 
