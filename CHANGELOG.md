@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2025.11.1-beta
+- ci - Upgrade nodejs used in ci to v24.
+
 # v2025.10.31
 - jslint - Upgrade to jslint-v2025.10.31.
 - jslint - Add coverage-directives '/*coverage-disable*/', '/*coverage-enable*/'. '//coverage-ignore-line'.
