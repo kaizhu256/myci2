@@ -4,6 +4,7 @@
 - none
 
 # v2025.11.1-beta
+- jslint - regression-fix - Warn about variable usage before initialization.
 - ci - Upgrade nodejs used in ci to v24.
 
 # v2025.10.31
