@@ -3,7 +3,8 @@
 # Todo
 - none
 
-# v2025.11.1-beta
+# v2025.12.28
+- jslint - Upgrade to jslint-v2025.12.28.
 - jslint - regression-fix - Warn about variable usage before initialization.
 - ci - Upgrade nodejs used in ci to v24.
 
