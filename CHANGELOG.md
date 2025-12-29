@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2026.1.1-beta
+- ci - Update file publish.yml to use trusted-publishing for npm packages.
+
 # v2025.12.28
 - jslint - Upgrade to jslint-v2025.12.28.
 - jslint - regression-fix - Warn about variable usage before initialization.
