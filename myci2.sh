@@ -14,7 +14,7 @@ shGithubBranchCopyAll() {(set -e
     GITHUB_REPO1="$1"
     GITHUB_REPO2="$2"
     MODE="$3"
-    rm -rf __tmp1
+    rm -rf __tmp1/
     shGitCmdWithGithubToken clone "https://github.com/$GITHUB_REPO1" __tmp1
     (
     cd __tmp1/
@@ -77,12 +77,12 @@ shMyciInit() {
     # init myci2
     if (git --version >/dev/null 2>&1)
     then
-        if [ ! -d myci2 ] || [ "$MODE_FORCE" ]
+        if [ ! -d myci2/ ] || [ "$MODE_FORCE" ]
         then
-            rm -rf myci2
+            rm -rf myci2/
             git clone https://github.com/kaizhu256/myci2 \
                 --branch=alpha --single-branch
-            (cd myci2 && cp .gitconfig .git/config && shMyciUpdate)
+            (cd myci2/ && cp .gitconfig .git/config && shMyciUpdate)
         fi
     fi
     # init .bashrc
@@ -129,11 +129,11 @@ https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main\n" \
     git config --global user.email "github-actions@users.noreply.github.com"
     git config --global user.name "github-actions"
     # init .mysecret2
-    if [ ! -d .mysecret2 ]
+    if [ ! -d .mysecret2/ ]
     then
         shGitCmdWithGithubToken clone \
             https://github.com/kaizhu256/mysecret2 .mysecret2 \
-            --branch=alpha --depth=1 --single-branch
+            --branch=_mysecret2 --depth=1 --single-branch
         chmod 700 .mysecret2
     fi
     )
@@ -237,7 +237,7 @@ shMyciUpdateReverse() {
 # this function will reverse-update myci2 from current dir
     (
     set -e
-    if [ ! -d .git ]
+    if [ ! -d .git/ ]
     then
         return
     fi
@@ -683,9 +683,9 @@ shSecretGitPush() {(set -e
 shSecretGitPull() {(set -e
 # this function will git-pull mysecret2 from dir $1
     cd "${1:-$HOME/.mysecret2}"
-    if (! shGitCmdWithGithubToken pull origin alpha)
+    if (! shGitCmdWithGithubToken pull origin _mysecret2)
     then
-        git reset origin/alpha --hard
+        git reset origin/_mysecret2 --hard
     fi
     shSecretDecryptFile . "$@"
 )}
@@ -761,7 +761,7 @@ shSshCloudflareServer() {(set -e
     if ([ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ])
     then
         # init mysecret2
-        if [ ! -d ~/.mysecret2 ]
+        if [ ! -d ~/.mysecret2/ ]
         then
             shMyCiInit
         fi
