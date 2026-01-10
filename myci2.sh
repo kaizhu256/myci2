@@ -5,8 +5,8 @@
 # curl -o ~/myci2.sh -s https://raw.githubusercontent.com/kaizhu256/myci2/alpha/myci2.sh && . ~/myci2.sh && shMyciInit
 # sh jslint_ci.sh shGithubWorkflowDispatch kaizhu256/myci2 mysh
 # sh jslint_ci.sh shGithubWorkflowDispatch kaizhu256/myci2 vcpkg
-# shSecretGitPull
-# shSecretGitPush
+# shSecretGitPull ""
+# shSecretGitPush ""
 
 shGithubBranchCopyAll() {(set -e
 # this function will copy-all branch from $GITHUB_REPO1 to $GITHUB_REPO2
@@ -282,7 +282,7 @@ shRollupUpgrade() {(set -e
 )}
 
 shSecretDecryptEncrypt() {(set -e
-# this function will jwe-decrypt/jwe-encrypt mysecret2 using $MY_SECRET_KEY
+# this function will jwe-decrypt/jwe-encrypt mysecret2 using $MYSECRET2_KEY
     shGithubTokenExport
     node --input-type=module --eval '
 import moduleAssert from "assert";
@@ -510,15 +510,18 @@ function objectDeepCopyWithKeysSorted(obj) {
         HOME,
         MY_GITHUB_TOKEN
     } = process.env;
-    let MY_SECRET_KEY = MY_GITHUB_TOKEN;
     let {
-        argv
+        argv,
+        stdin,
+        stdout
     } = process;
-    let fileDecrypted = `${HOME}/.mysecret2/.mysecret2.json`;
-    let fileEncrypted = `${HOME}/.mysecret2/.mysecret2.json.encrypted`;
-    let fileGetDestination = argv[3];
-    let itemKey = argv[2];
-    let itemVal = argv[3];
+    let MYSECRET2_DIR = argv[2] || `${HOME}/.mysecret2`; //jslint-ignore-line
+    let MYSECRET2_KEY = MY_GITHUB_TOKEN;
+    let fileDecrypted = `${MYSECRET2_DIR}/.mysecret2.json`;
+    let fileEncrypted = `${MYSECRET2_DIR}/.mysecret2.json.encrypted`;
+    let fileGetDestination = argv[4];
+    let itemKey = argv[3];
+    let itemVal = argv[4];
     let jweCompact;
     let jwkKek;
     let modeDecryptEncrypt = argv[1];
@@ -563,17 +566,17 @@ function objectDeepCopyWithKeysSorted(obj) {
     }
 
 // Get 256-bit jwk-formatted-key-encryption-key jwkKek,
-// from sha256-hash of MY_SECRET_KEY.
+// from sha256-hash of MYSECRET2_KEY.
 
     moduleAssert.ok(
-        MY_SECRET_KEY.length >= 16,
-        "cryptoJweDecryptEncrypt - MY_SECRET_KEY length too short"
+        MYSECRET2_KEY.length >= 16,
+        "cryptoJweDecryptEncrypt - MYSECRET2_KEY length too short"
     );
     jwkKek = JSON.stringify({
         k: base64urlFromBuffer(
             await webcrypto.subtle.digest(
                 "SHA-256",
-                Buffer.from(MY_SECRET_KEY)
+                Buffer.from(MYSECRET2_KEY)
             )
         ),
         kty: "oct"
@@ -608,24 +611,24 @@ function objectDeepCopyWithKeysSorted(obj) {
         JSON.parse(itemKey).forEach(function (key) {
             itemVal[key] = mysecretJson[key] ?? undefined;
         });
-        process.stdout.write(JSON.stringify(itemVal));
+        stdout.write(JSON.stringify(itemVal));
         break;
     case "shSecretJsonSet":
         await mysecretDecrypt();
         itemVal = "";
-        process.stdin.setEncoding("utf8");
-        process.stdin.on("data", function (chunk) {
+        stdin.setEncoding("utf8");
+        stdin.on("data", function (chunk) {
             itemVal += chunk;
         });
         await new Promise(function (resolve) {
-            process.stdin.on("end", resolve);
+            stdin.on("end", resolve);
         });
         Object.assign(mysecretJson, JSON.parse(itemVal));
         await mysecretEncrypt();
         break;
     case "shSecretTextGet":
         await mysecretDecrypt();
-        process.stdout.write(mysecretJson[itemKey] || "");
+        stdout.write(mysecretJson[itemKey] || "");
         break;
     case "shSecretTextSet":
         await mysecretDecrypt();
@@ -643,80 +646,80 @@ function objectDeepCopyWithKeysSorted(obj) {
 )}
 
 shSecretDecryptFile() {(set -e
-# this function will decrypt myscret2 using jwe and $MY_SECRET_KEY
-    shSecretDecryptEncrypt shSecretDecryptFile
+# this function will decrypt myscret2 using jwe and $MYSECRET2_KEY
+    shSecretDecryptEncrypt shSecretDecryptFile "$@"
 )}
 
 shSecretEncryptFile() {(set -e
-# this function will encrypt mysecret2 using jwe and $MY_SECRET_KEY
-    shSecretDecryptEncrypt shSecretEncryptFile
+# this function will encrypt mysecret2 using jwe and $MYSECRET2_KEY
+    shSecretDecryptEncrypt shSecretEncryptFile "$@"
 )}
 
 shSecretFileGet() {(set -e
-# this function will decrypt myscret2, and write from item-key $1 to file $2
-    shSecretDecryptEncrypt shSecretFileGet "$1" "$2"
+# this function will decrypt myscret2, and write from item-key $2 to file $3
+    shSecretDecryptEncrypt shSecretFileGet "$@"
 )}
 
 shSecretFileSet() {(set -e
-# this function will decrypt mysecret2, and write to item-key $1 from file $2
-    shSecretDecryptEncrypt shSecretFileSet "$1" "$2"
+# this function will decrypt mysecret2, and write to item-key $2 from file $3
+    shSecretDecryptEncrypt shSecretFileSet "$@"
 )}
 
 shSecretGitPush() {(set -e
 # this function will git-commit-and-push mysecret2
-    cd ~/.mysecret2/
+    cd "${1:-$HOME/.mysecret2}"
     if [ -f .mysecret2.json ]
     then
         shJsonNormalize .mysecret2.json
-        shSecretEncryptFile
+        shSecretEncryptFile . "$@"
     fi
     if (! shGitCommitPushOrSquash "" 100)
     then
-        shSecretGitPull
+        shSecretGitPull . "$@"
         shGitCommitPushOrSquash "" 100
     fi
 )}
 
 shSecretGitPull() {(set -e
-# this function will git-pull mysecret2
-    cd ~/.mysecret2/
+# this function will git-pull mysecret2 from dir $1
+    cd "${1:-$HOME/.mysecret2}"
     if (! shGitCmdWithGithubToken pull origin alpha)
     then
         git reset origin/alpha --hard
     fi
-    shSecretDecryptFile
+    shSecretDecryptFile . "$@"
 )}
 
 shSecretJsonGet() {(set -e
-# this function will decrypt mysecret2, and print items in $1 to stdout
-    shSecretDecryptEncrypt shSecretJsonGet "$1"
+# this function will decrypt mysecret2, and print items in $2 to stdout
+    shSecretDecryptEncrypt shSecretJsonGet "$@"
 )}
 
 shSecretJsonSet() {(set -e
 # this function will decrypt mysecret2, and Object.assign(mysecret2, stdin)
-    shSecretDecryptEncrypt shSecretJsonSet
+    shSecretDecryptEncrypt shSecretJsonSet "$@"
 )}
 
 shSecretTextGet() {(set -e
-# this function will decrypt mysecret2, and print item-key $1 to stdout
-    shSecretDecryptEncrypt shSecretTextGet "$1"
+# this function will decrypt mysecret2, and print item-key $2 to stdout
+    shSecretDecryptEncrypt shSecretTextGet "$@"
 )}
 
 shSecretTextSet() {(set -e
-# this function will decrypt mysecret2, and set to item-key $1 from item-val $2
-    shSecretDecryptEncrypt shSecretTextSet "$1" "$2"
+# this function will decrypt mysecret2, and set to item-key $2 from item-val $3
+    shSecretDecryptEncrypt shSecretTextSet "$@"
 )}
 
 shSshCloudflareClient() {(set -e
 # this function will client-login to ssh-server through cloudflare-tunnel
     shSshCloudflareInstall
-    shSecretGitPull >/dev/null 2>&1 || shSecretGitPull
-    shSecretFileGet .ssh/known_hosts.proxy ~/.ssh/known_hosts.proxy
+    shSecretGitPull "" >/dev/null 2>&1 || shSecretGitPull ""
+    shSecretFileGet "" .ssh/known_hosts.proxy ~/.ssh/known_hosts.proxy
     ssh \
         -o ProxyCommand="cloudflared access ssh --hostname %h" \
         -o UserKnownHostsFile=~/.ssh/known_hosts.proxy \
         -t \
-        "${SSH_CLOUDFLARE_HOST:-$(shSecretTextGet SSH_CLOUDFLARE_HOST)}" "$@"
+        "${SSH_CLOUDFLARE_HOST:-$(shSecretTextGet "" SSH_CLOUDFLARE_HOST)}" "$@"
 )}
 
 shSshCloudflareInstall() {(set -e
@@ -812,9 +815,9 @@ PubkeyAuthentication yes
         chmod 700 ~/.ssh/
         (
         cd ~/.ssh/
-        shSecretFileGet .ssh/authorized_keys authorized_keys
-        shSecretFileGet .ssh/id_ed25519 id_ed25519
-        shSecretFileGet .ssh/known_hosts.proxy known_hosts.proxy
+        shSecretFileGet "" .ssh/authorized_keys authorized_keys
+        shSecretFileGet "" .ssh/id_ed25519 id_ed25519
+        shSecretFileGet "" .ssh/known_hosts.proxy known_hosts.proxy
         )
     fi
     # create cloudflare-tunnel
@@ -880,9 +883,9 @@ import moduleChildProcess from "child_process";
         fi
     done
     printf -- "$(tail -n 4 known_hosts.proxy)" > known_hosts.proxy
-    shSecretFileSet .ssh/known_hosts.proxy known_hosts.proxy
-    shSecretTextSet SSH_CLOUDFLARE_HOST "$SSH_CLOUDFLARE_HOST"
-    shSecretGitPush || true
+    shSecretFileSet "" .ssh/known_hosts.proxy known_hosts.proxy
+    shSecretTextSet "" SSH_CLOUDFLARE_HOST "$SSH_CLOUDFLARE_HOST"
+    shSecretGitPush "" || true
     II=-10
     while [ "$II" -lt 240 ]
     do
@@ -922,8 +925,8 @@ shSshKeygen() {(set -e
     cp id_ed25519 "id_ed25519.$(date +"%Y%m%d_%H%M%S")"
     cp id_ed25519.pub "id_ed25519.pub.$(date +"%Y%m%d_%H%M%S")"
     # save ssh-proxy-key
-    shSecretFileSet .ssh/authorized_keys id_ed25519.pub
-    shSecretFileSet .ssh/id_ed25519 id_ed25519
+    shSecretFileSet "" .ssh/authorized_keys id_ed25519.pub
+    shSecretFileSet "" .ssh/id_ed25519 id_ed25519
     # git push
-    shSecretGitPush
+    shSecretGitPush ""
 )}

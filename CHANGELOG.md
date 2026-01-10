@@ -4,6 +4,7 @@
 - none
 
 # v2026.1.1-beta
+- myci2 - Update shell-function shSecretXxx(), inserting custom secret-directory as first argument.
 - ci - Update file publish.yml to use trusted-publishing for npm packages.
 
 # v2025.12.28
