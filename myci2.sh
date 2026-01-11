@@ -5,8 +5,19 @@
 # curl -o ~/myci2.sh -s https://raw.githubusercontent.com/kaizhu256/myci2/alpha/myci2.sh && . ~/myci2.sh && shMyciInit
 # sh jslint_ci.sh shGithubWorkflowDispatch kaizhu256/myci2 mysh
 # sh jslint_ci.sh shGithubWorkflowDispatch kaizhu256/myci2 vcpkg
+# shGitStatus HEAD
 # shSecretGitPull ""
 # shSecretGitPush ""
+
+shGitStatus() {(set -e
+    printf "\n\n\n\n"
+    git --no-pager diff "$1"
+    printf "\n\n\n\n"
+    git --no-pager log -n 8 "$1"
+    printf "\n\n\n\n"
+    git --no-pager diff --stat "$1"
+    printf "\n\n\n\n"
+)}
 
 shGithubBranchCopyAll() {(set -e
 # this function will copy-all branch from $GITHUB_REPO1 to $GITHUB_REPO2
@@ -131,9 +142,11 @@ https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main\n" \
     # init .mysecret2
     if [ ! -d .mysecret2/ ]
     then
+        printf "init .mysecret2\n"
         shGitCmdWithGithubToken clone \
             https://github.com/kaizhu256/mysecret2 .mysecret2 \
-            --branch=_mysecret2 --depth=1 --single-branch
+            --branch=_mysecret2 --depth=1 --single-branch \
+            >/dev/null 2>&1
         chmod 700 .mysecret2
     fi
     )
