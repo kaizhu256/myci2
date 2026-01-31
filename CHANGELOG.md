@@ -3,7 +3,7 @@
 # Todo
 - none
 
-# v2026.1.1-beta
+# v2026.1.31
 - myci2 - Add shell-function shGitStatus().
 - myci2 - Update shell-function shSecretXxx(), inserting custom secret-directory as first argument.
 - ci - Update file publish.yml to use trusted-publishing for npm packages.
