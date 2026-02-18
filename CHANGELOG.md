@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2026.2.1-beta
+- jslint-ci - Update shell-function shCiBase() to check npm-version-support, before running npm-pkg-fix.
+
 # v2026.1.31
 - myci2 - Add shell-function shGitStatus().
 - myci2 - Update shell-function shSecretXxx(), inserting custom secret-directory as first argument.
