@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2026.3.1-beta
+- jslint-ci - Update shell-function shLintPython().
+
 # v2026.2.28
 - jslint-ci - Update shell-function shCiBase() to check npm-version-support, before running npm-pkg-fix.
 

@@ -303,10 +303,25 @@ function! SaveAndPylint(bang)
     "" save file
     if a:bang == "!" | write! | else | write | endif
     "" pylint file
-    let &l:errorformat =
-        \ "%.%# %f:%l:%c: %m," .
-        \ "%f:%l:%c: %m"
-    let &l:makeprg = "ruff \"" . fnamemodify(bufname("%"), ":p") . "\""
+    let &l:errorformat = '%f:%l:%c: %m'
+    let &l:makeprg = "ruff check"
+        \ . " --fix --no-cache --output-format=concise"
+        \ . " --select=ALL"
+        \ . " --ignore=ANN"
+        \ . " --ignore=C901"
+        \ . " --ignore=D203"
+        \ . " --ignore=D212"
+        \ . " --ignore=D401"
+        \ . " --ignore=D404"
+        \ . " --ignore=ERA001"
+        \ . " --ignore=PLR0912"
+        \ . " --ignore=PLR0913"
+        \ . " --ignore=PLR0915"
+        \ . " --ignore=S603"
+        \ . " --ignore=S607"
+        \ . " --ignore=S608"
+        \ . " --ignore=T201"
+        \ . " \"" . fnamemodify(bufname("%"), ":p") . "\""
     silent make! | cwindow | redraw!
 endfunction
 
