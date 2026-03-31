@@ -9,7 +9,7 @@ on:
       - master
   push:
     branches:
-      - "*/*/*"
+      - '*/*/*'
       - alpha
       - beta
       - master
