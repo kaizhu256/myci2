@@ -84,7 +84,7 @@ jobs:
         if: github.event_name != "pull_request"
         with:
           key: >
-            ${{ hashFiles('./package.json') }}
+            ${{ hashFiles("./package.json") }}
             ${{ matrix.architecture }}
             ${{ matrix.node_version }}
             ${{ matrix.os }}
