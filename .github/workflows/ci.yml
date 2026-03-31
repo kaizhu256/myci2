@@ -2,6 +2,11 @@
 # and upload build-artifacts to branch-gh-pages
 name: ci
 on:
+  pull_request:
+    branches:
+      - alpha
+      - beta
+      - master
   push:
     branches:
       - '*/*/*'
