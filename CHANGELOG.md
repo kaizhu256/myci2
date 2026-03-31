@@ -4,6 +4,7 @@
 - none
 
 # v2026.3.1-beta
+- ci - Update shell-function shGitPullrequestCleanup() to allow squash-and-merge pull-request.
 - ci - Update file .github/workflows/ci.yml with hook to run on pull-request.
 - jslint-ci - Update shell-function shLintPython().
 
