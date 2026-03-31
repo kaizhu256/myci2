@@ -69,7 +69,7 @@ jobs:
       # https://github.com/actions/checkout
       - uses: actions/checkout@v5
       # https://github.com/actions/cache
-      - uses: actions/cache/restore@v5
+      - uses: actions/cache@v5
         with:
           key: >
             ${{ hashFiles('./package.json') }}
@@ -104,18 +104,4 @@ jobs:
           github.event_name == 'push' ||
           github.event_name == 'schedule' ||
           github.event_name == 'workflow_dispatch'
-      # https://github.com/actions/cache
-      - run: sh -c 'mkdir -p .github_cache/'
-      - uses: actions/cache/save@v5
-        if: >
-          github.event_name == 'push' ||
-          github.event_name == 'schedule' ||
-          github.event_name == 'workflow_dispatch'
-        with:
-          key: >
-            ${{ hashFiles('./package.json') }}
-            ${{ matrix.architecture }}
-            ${{ matrix.node_version }}
-            ${{ matrix.os }}
-          path: .github_cache/
 # base - .github/workflows/ci.yml - end
