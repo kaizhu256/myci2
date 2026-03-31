@@ -93,4 +93,5 @@ jobs:
       - run: sh jslint_ci.sh shCiBase
       # upload build-artifacts to branch-gh-pages
       - run: sh jslint_ci.sh shCiArtifactUpload
+        if: github.event_name != pull_request
 # base - .github/workflows/ci.yml - end
