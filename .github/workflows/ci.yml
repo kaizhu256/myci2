@@ -70,7 +70,7 @@ jobs:
           if [ -f "$FILE" ]; then git checkout origin/alpha "$FILE"; fi; done'
       # pre-run .ci.sh
       - run: sh jslint_ci.sh shCiPre
-        if: github.event_name != 'pull_request'
+        if: github.event_name != pull_request
       # https://github.com/actions/setup-node
       - uses: actions/setup-node@v4
         with:
@@ -81,6 +81,7 @@ jobs:
           python-version: ${{ matrix.python_version }}
       # https://github.com/actions/cache
       - uses: actions/cache@v4
+        if: github.event_name != pull_request
         with:
           key: >
             ${{ hashFiles('./package.json') }}
