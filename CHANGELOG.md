@@ -3,7 +3,7 @@
 # Todo
 - none
 
-# v2026.3.1-beta
+# v2026.3.31
 - ci - Speed-up windows-ci by replacing windows-latest with windows-2022.
 - jslint-ci - Update file jslint_ci.sh, replacing deprecated url.parse(...).pathname with new URL(...).pathname.
 - jslint-ci - Update shell-function shGitPullrequestCleanup() to allow squash-and-merge pull-request.
