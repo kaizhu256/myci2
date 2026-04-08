@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2026.4.1-beta
+- github-ci - Pin various github-runner-os to stable/lts version.
+
 # v2026.3.31
 - ci - Speed-up windows-ci by replacing windows-latest with windows-2022.
 - jslint-ci - Update file jslint_ci.sh, replacing deprecated url.parse(...).pathname with new URL(...).pathname.
