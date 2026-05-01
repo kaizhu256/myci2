@@ -3,7 +3,7 @@
 # Todo
 - none
 
-# v2026.4.1-beta
+# v2026.4.30
 - github-ci - Pin various github-runner-os to stable/lts version.
 
 # v2026.3.31
