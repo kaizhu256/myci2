@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2026.5.1-beta
+- github-ci - Update shell-function shMyciUpdate() to auto-update github-action-xxx@vxxx.
+
 # v2026.4.30
 - github-ci - Pin various github-runner-os to stable/lts version.
 

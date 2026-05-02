@@ -241,6 +241,16 @@ import moduleFs from "fs";
 ' "$HOME/myci2/$FILE" "$FILE" # '
         fi
     done
+    for FILE in $(find .github/workflows/ -name *.yml -type f 2>/dev/null)
+    do
+        sed -i.bak \
+            -e "s|actions/cache@v[0-9][0-9]*|actions/cache@v5|g" \
+            -e "s|actions/checkout@v[0-9][0-9]*|actions/checkout@v5|g" \
+            -e "s|actions/setup-node@v[0-9][0-9]*|actions/setup-node@v6|g" \
+            -e "s|actions/setup-python@v[0-9][0-9]*|actions/setup-python@v6|g" \
+            "$FILE"
+        rm -f "$FILE.bak"
+    done
     git --no-pager diff
     )
     . ~/jslint_ci.sh :
