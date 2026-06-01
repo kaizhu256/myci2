@@ -3,7 +3,7 @@
 # Todo
 - none
 
-# v2026.5.1-beta
+# v2026.5.31
 - github-ci - Update shell-function shMyciUpdate() to auto-update github-action-xxx@vxxx.
 
 # v2026.4.30
