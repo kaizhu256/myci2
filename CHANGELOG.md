@@ -3,6 +3,10 @@
 # Todo
 - none
 
+# v2026.6.1-beta
+- jslint - Add ES2018-syntax for object-literal-spread-operator.
+- jslint - Add ES2025-syntax "import ... with {...}".
+
 # v2026.5.31
 - github-ci - Update shell-function shMyciUpdate() to auto-update github-action-xxx@vxxx.
 
