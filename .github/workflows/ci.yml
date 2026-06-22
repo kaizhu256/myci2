@@ -18,6 +18,8 @@ on:
       workflow_dispatch_name:
         default: undefined
         required: false
+permissions:
+  contents: write
 env:
   MY_GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
   zzzz1234: 1
