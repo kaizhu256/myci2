@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2026.7.1-beta
+- jslint-regression - Fix long-running regression where 'let x = x;' doesn't warn about temporal-dead-zone.
+
 # v2026.6.30
 - jslint-ecma - Update README.md, documenting supported ES2015+ features.
 - jslint - Wrap all property-updates 'name.init = true/false' with calls to:
