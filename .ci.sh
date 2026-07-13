@@ -1,3 +1,5 @@
+#!/bin/sh
+
 shCiBuildVcpkg() {(set -e
 # This function will build vcpkg binaries.
     if [ ! "$GITHUB_ACTION" ]
@@ -12,21 +14,17 @@ shCiBuildVcpkg() {(set -e
     cd vcpkg/
     ./bootstrap-vcpkg.sh
     #
-    for PACKAGE in \
-        zlib
-    do
-        case "$(uname)" in
-        Darwin*)
-            vcpkg install "$PACKAGE:arm64-osx" || true
-            ;;
-        Linux*)
-            vcpkg install "$PACKAGE:x64-linux" || true
-            ;;
-        MINGW*)
-            vcpkg install "$PACKAGE:x64-windows-static" || true
-            ;;
-        esac
-    done
+    case "$(uname)" in
+    Darwin*)
+        vcpkg install zlib:arm64-osx || true
+        ;;
+    Linux*)
+        vcpkg install zlib:x64-linux || true
+        ;;
+    MINGW*)
+        vcpkg install zlib:x64-windows-static || true
+        ;;
+    esac
     )
     GITHUB_UPLOAD_RETRY=0
     while true
@@ -45,7 +43,7 @@ import moduleChildProcess from "child_process";
         {stdio: ["ignore", 1, 2]}
     ).on("exit", process.exit);
 }());
-' "$@") # '
+') # '
         then
             break
         fi
@@ -72,11 +70,11 @@ shCiBuildVcpkgUpload() {(set -e
 shCiPreCustom() {(set -e
 # this function will run pre-ci-custom
     # github-action-only
-    if ! ([ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ]); then return 1; fi
-    if (printf "$GITHUB_REF_NAME" | grep -q ".*/.*/.*")
+    if ! { [ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ]; }; then return 1; fi
+    if (printf "%s" "$GITHUB_REF_NAME" | grep -q ".*/.*/.*")
     then
         shGithubCheckoutRemote "$GITHUB_REF_NAME"
-        GITHUB_REF_NAME="$(printf "$GITHUB_REF_NAME" | cut -d'/' -f3)"
+        GITHUB_REF_NAME="$(printf "%s" "$GITHUB_REF_NAME" | cut -d'/' -f3)"
         sh jslint_ci.sh shCiPre
         return
     fi

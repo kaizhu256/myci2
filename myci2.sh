@@ -31,7 +31,7 @@ shGithubBranchCopyAll() {(set -e
     cd __tmp1/
     for BRANCH in $(git branch -r | tail -n +2)
     do
-        BRANCH="$(printf "$BRANCH" | sed -e "s|^origin/||")"
+        BRANCH="$(printf "%s" "$BRANCH" | sed -e "s|^origin/||")"
         git branch "$BRANCH" "origin/$BRANCH" || true
         if [ "$MODE" = force ]
         then
@@ -57,7 +57,7 @@ shGithubBranchDeleteAll() {(set -e
         | grep -o "\<refs/heads/.*"
     )
     do
-        BRANCH="$(printf "$BRANCH" | sed -e "s|^refs/heads/||")"
+        BRANCH="$(printf "%s" "$BRANCH" | sed -e "s|^refs/heads/||")"
         shGitCmdWithGithubToken push \
             "https://github.com/$GITHUB_REPO" ":$BRANCH" &
         PID_LIST="$PID_LIST $!"
@@ -84,7 +84,7 @@ shMyciInit() {
 "https://raw.githubusercontent.com/kaizhu256/myci2/alpha/$FILE"
         fi
     done
-    . ~/jslint_ci.sh :
+    . ~/jslint_ci.sh
     # init myci2
     if (git --version >/dev/null 2>&1)
     then
@@ -101,13 +101,10 @@ shMyciInit() {
     then
         touch .bashrc
     fi
-    for FILE in jslint_ci.sh
-    do
-        if [ -f "$FILE" ] && ! (grep -q "^. ~/$FILE :$" .bashrc)
-        then
-            printf "\n. ~/$FILE :\n" >> .bashrc
-        fi
-    done
+    if [ -f jslint_ci.sh ] && ! (grep -q "^. ~/jslint_ci.sh :$" .bashrc)
+    then
+        printf "\n. ~/%s :\n" jslint_ci.sh >> .bashrc
+    fi
     # install nodejs
     if ([ "$GITHUB_ACTION" ] \
         && (
@@ -128,14 +125,14 @@ shMyciInit() {
         # Create deb repository
         NODE_MAJOR=18
         printf "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] \
-https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main\n" \
+https://deb.nodesource.com/node_%s.x nodistro main\n" "$NODE_MAJOR" \
             | sudo tee /etc/apt/sources.list.d/nodesource.list
         # Run Update and Install
         sudo apt-get update
         sudo apt-get install nodejs -y
     fi
     # github-action-only
-    if ! ([ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ]); then return; fi
+    if ! { [ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ]; }; then return; fi
     # init .git/config
     git config --global user.email "github-actions@users.noreply.github.com"
     git config --global user.name "github-actions"
@@ -150,7 +147,7 @@ https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main\n" \
         chmod 700 .mysecret2
     fi
     )
-    . ~/jslint_ci.sh :
+    . ~/jslint_ci.sh
 }
 
 shMyciUpdate() {
@@ -241,7 +238,8 @@ import moduleFs from "fs";
 ' "$HOME/myci2/$FILE" "$FILE" # '
         fi
     done
-    for FILE in $(find .github/workflows/ -name *.yml -type f 2>/dev/null)
+    # shellcheck disable=SC2044
+    for FILE in $(find .github/workflows/ -name "*.yml" -type f 2>/dev/null)
     do
         sed -i.bak \
             -e "s|actions/cache@v[0-9][0-9]*|actions/cache@v5|g" \
@@ -253,7 +251,7 @@ import moduleFs from "fs";
     done
     git --no-pager diff
     )
-    . ~/jslint_ci.sh :
+    . ~/jslint_ci.sh
 }
 
 shMyciUpdateReverse() {
@@ -287,16 +285,17 @@ shMyciUpdateReverse() {
         fi
     done
     )
-    . ~/jslint_ci.sh :
+    . ~/jslint_ci.sh
 }
 
 shRollupUpgrade() {(set -e
 # This function will upgrade $VERSION1 to version $VERSION2 in $FILE_LIST.
-    VERSION1="$(printf "$1" | sed "s|\.|\\\\.|g")"
-    VERSION2="$(printf "$2" | sed "s|\.|\\\\.|g")"
+    VERSION1="$(printf "%s" "$1" | sed "s|\.|\\\\.|g")"
+    VERSION2="$(printf "%s" "$2" | sed "s|\.|\\\\.|g")"
     FILE_LIST="$3"
     printf "\n" && (git grep "$VERSION1" || true) && printf "\n"
-    read -p "Press Enter to sed $FILE_LIST:"
+    printf "Press Enter to sed %s:" "$FILE_LIST"
+    read -r _
     for FILE in $FILE_LIST
     do
         sed -i -e "s|\<$VERSION1\>|$VERSION2|g" "$FILE"
@@ -781,7 +780,7 @@ shSshCloudflareServer() {(set -e
     # google-colab-only
     # !(export MY_GITHUB_TOKEN=xxxxxxxx && curl -o ~/myci2.sh -s https://raw.githubusercontent.com/kaizhu256/myci2/alpha/myci2.sh && . ~/myci2.sh && shMyciInit && shSshCloudflareServer)
     # github-action-only
-    if ([ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ])
+    if [ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ]
     then
         # init mysecret2
         if [ ! -d ~/.mysecret2/ ]
@@ -809,11 +808,8 @@ PowerShell/Win32-OpenSSH/releases/latest/download/OpenSSH-Win64.zip
             cd OpenSSH-Win64/
             ssh-keygen -q -N "" -t ed25519 -f ssh_host_ed25519_key
             # bugfix - Permissions for 'ssh_host_ed25519_key' are too open.
-            powershell "
-icacls ssh_host_ed25519_key /inheritance:r
-start-process icacls.exe -ArgumentList \
-    'ssh_host_ed25519_key /grant:r \"$env:USERNAME\":\"(R)\"'
-            "
+            icacls ssh_host_ed25519_key /inheritance:r
+            icacls ssh_host_ed25519_key /grant:r "${USERNAME:-$USER}:(R)"
             printf "
 AuthorizedKeysFile .ssh/authorized_keys
 HostKey ssh_host_ed25519_key
@@ -827,7 +823,7 @@ PubkeyAuthentication yes
         # init secret
         (
         cd "$HOME/.mysecret2/"
-        printf "$MY_GITHUB_TOKEN\n" > .my_github_token
+        printf "%s" "$MY_GITHUB_TOKEN\n" > .my_github_token
         chmod 600 .my_github_token
         printf \
 '\nexport MY_GITHUB_TOKEN="$(cat ~/.mysecret2/.my_github_token)"\n' >> ~/.bashrc
@@ -913,8 +909,9 @@ import moduleChildProcess from "child_process";
     while [ "$II" -lt 240 ]
     do
         II=$((II + 1))
-        printf "    $II -- $(date) -- \\"$SSH_CLOUDFLARE_HOST\\"\n" \
-            | sed -e "s|\.trycloudflare\.com||"
+        printf "    %s -- %s -- %s\n" \
+            "$II" "$(date)" "$SSH_CLOUDFLARE_HOST" | \
+            sed -e "s|\.trycloudflare\.com||"
         if [ "$II" -lt 0 ]
         then
             sleep 10
