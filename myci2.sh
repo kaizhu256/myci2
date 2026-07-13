@@ -53,8 +53,8 @@ shGithubBranchDeleteAll() {(set -e
     GITHUB_REPO="$1"
     for BRANCH in $(git ls-remote -q \
         "https://x-access-token:$MY_GITHUB_TOKEN@github.com/$GITHUB_REPO" \
-        2>/dev/null \
-        | grep -o "\<refs/heads/.*"
+        2>/dev/null | \
+        grep -o "\<refs/heads/.*"
     )
     do
         BRANCH="$(printf "%s" "$BRANCH" | sed -e "s|^refs/heads/||")"
@@ -86,7 +86,7 @@ shMyciInit() {
     done
     . ~/jslint_ci.sh
     # init myci2
-    if (git --version >/dev/null 2>&1)
+    if git --version >/dev/null 2>&1
     then
         if [ ! -d myci2/ ] || [ "$MODE_FORCE" ]
         then
@@ -101,38 +101,12 @@ shMyciInit() {
     then
         touch .bashrc
     fi
-    if [ -f jslint_ci.sh ] && ! (grep -q "^. ~/jslint_ci.sh :$" .bashrc)
+    if [ -f jslint_ci.sh ] && ! grep -q "^. ~/jslint_ci.sh :$" .bashrc
     then
         printf "\n. ~/%s :\n" jslint_ci.sh >> .bashrc
     fi
-    # install nodejs
-    if ([ "$GITHUB_ACTION" ] \
-        && (
-            node -e \
-                'process.exit(Number(!(process.version < "v18")))' \
-                >/dev/null 2>&1
-        )
-    )
-    then
-        # https://github.com/nodesource/distributions#installation-instructions
-        # Download and import the Nodesource GPG key
-        sudo apt-get update
-        sudo apt-get install -y ca-certificates curl gnupg
-        sudo mkdir -p /etc/apt/keyrings
-        curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
-            | gpg --dearmor \
-            | sudo tee /etc/apt/keyrings/nodesource.gpg >/dev/null
-        # Create deb repository
-        NODE_MAJOR=18
-        printf "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] \
-https://deb.nodesource.com/node_%s.x nodistro main\n" "$NODE_MAJOR" \
-            | sudo tee /etc/apt/sources.list.d/nodesource.list
-        # Run Update and Install
-        sudo apt-get update
-        sudo apt-get install nodejs -y
-    fi
     # github-action-only
-    if ! { [ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ]; }; then return; fi
+    if [ ! "$GITHUB_ACTION" ] || [ ! "$MY_GITHUB_TOKEN" ]; then return; fi
     # init .git/config
     git config --global user.email "github-actions@users.noreply.github.com"
     git config --global user.name "github-actions"
@@ -158,7 +132,7 @@ shMyciUpdate() {
     [ -d .git ] # git-repo-only
     git fetch origin alpha beta master
     git pull origin alpha
-    if (git branch -r | grep -q origin/beta)
+    if git branch -r | grep -q origin/beta
     then
         git branch beta origin/beta 2>/dev/null || git push . origin/beta:beta
     fi
@@ -193,8 +167,7 @@ shMyciUpdate() {
     done
     ln -f "$HOME/jslint.mjs" "$HOME/.vim/jslint.mjs"
     # detect nodejs
-    if ! (node --version >/dev/null 2>&1 \
-        || node.exe --version >/dev/null 2>&1)
+    if ! node --version >/dev/null 2>&1 && ! node.exe --version >/dev/null 2>&1
     then
         git --no-pager diff
         return
@@ -695,7 +668,7 @@ shSecretGitPush() {(set -e
         shJsonNormalize .mysecret2.json
         shSecretEncryptFile . "$@"
     fi
-    if (! shGitCommitPushOrSquash "" 100)
+    if ! shGitCommitPushOrSquash "" 100
     then
         shSecretGitPull . "$@"
         shGitCommitPushOrSquash "" 100
@@ -705,7 +678,7 @@ shSecretGitPush() {(set -e
 shSecretGitPull() {(set -e
 # this function will git-pull mysecret2 from dir $1
     cd "${1:-$HOME/.mysecret2}"
-    if (! shGitCmdWithGithubToken pull origin _mysecret2)
+    if ! shGitCmdWithGithubToken pull origin _mysecret2
     then
         git reset origin/_mysecret2 --hard
     fi
@@ -746,7 +719,7 @@ shSshCloudflareClient() {(set -e
 
 shSshCloudflareInstall() {(set -e
 # this function will install cloudflared binary
-    if (cloudflared --version)
+    if cloudflared --version
     then
         return
     fi

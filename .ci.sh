@@ -34,7 +34,7 @@ shCiBuildVcpkg() {(set -e
         then
             return 1
         fi
-        if (node --input-type=module --eval '
+        if node --input-type=module --eval '
 import moduleChildProcess from "child_process";
 (function () {
     moduleChildProcess.spawn(
@@ -43,7 +43,7 @@ import moduleChildProcess from "child_process";
         {stdio: ["ignore", 1, 2]}
     ).on("exit", process.exit);
 }());
-') # '
+' # '
         then
             break
         fi
@@ -70,8 +70,8 @@ shCiBuildVcpkgUpload() {(set -e
 shCiPreCustom() {(set -e
 # this function will run pre-ci-custom
     # github-action-only
-    if ! { [ "$GITHUB_ACTION" ] && [ "$MY_GITHUB_TOKEN" ]; }; then return 1; fi
-    if (printf "%s" "$GITHUB_REF_NAME" | grep -q ".*/.*/.*")
+    if [ ! "$GITHUB_ACTION" ] || [ ! "$MY_GITHUB_TOKEN" ]; then return; fi
+    if printf "%s" "$GITHUB_REF_NAME" | grep -q ".*/.*/.*"
     then
         shGithubCheckoutRemote "$GITHUB_REF_NAME"
         GITHUB_REF_NAME="$(printf "%s" "$GITHUB_REF_NAME" | cut -d'/' -f3)"
@@ -86,7 +86,7 @@ shCiPreCustom() {(set -e
         shCiBuildVcpkg
         ;;
     esac
-    if (! shCiMatrixIsmainName)
+    if ! shCiMatrixIsmainName
     then
         return
     fi
