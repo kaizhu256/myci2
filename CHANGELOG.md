@@ -11,6 +11,20 @@
 
 # v2026.6.30
 - jslint-ecma - Update README.md, documenting supported ES2015+ features.
+- jslint - Change scope from scope_function to scope_block:
+    - const-declaration
+    - let-declaration
+    - function-declaration
+- jslint - Add implicit scope_block for:
+    - do-while
+    - for-loop
+    - if-else
+    - while-loop
+- jslint - Add hidden scope_block for:
+    - catch-variable
+    - for-variable
+    - function-parameter
+    - label-name
 - jslint - Wrap all property-updates 'name.init = true/false' with calls to:
     name_lookup() - 'aa=0'
     name_push()   - 'let aa=0'
