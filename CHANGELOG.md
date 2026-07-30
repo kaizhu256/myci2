@@ -3,7 +3,7 @@
 # Todo
 - none
 
-# v2026.7.1-beta
+# v2026.7.30
 - jslint-ecma - Add ES2015-feature for..of.
 - jslint - Expand built-in-globals for browser, ecma, and node - auto-generated from online-sources.
 - jslint-ci - Add automated ci for shellcheck to lint shell-scripts.
