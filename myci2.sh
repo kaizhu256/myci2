@@ -225,6 +225,8 @@ import moduleFs from "fs";
     git --no-pager diff
     )
     . ~/jslint_ci.sh
+    printf "\n\n\n\n"
+    git --no-pager log -n 8
 }
 
 shMyciUpdateReverse() {
@@ -259,6 +261,8 @@ shMyciUpdateReverse() {
     done
     )
     . ~/jslint_ci.sh
+    printf "\n\n\n\n"
+    git --no-pager log -n 8
 }
 
 shRollupUpgrade() {(set -e

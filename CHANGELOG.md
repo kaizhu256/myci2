@@ -10,6 +10,9 @@
 - jslint-regression - Cleanup indent for multiline-method-chaining.
 - jslint-regression - Fix long-running regression where 'let x = x;' doesn't warn about temporal-dead-zone.
 
+# v2026.8.1-beta
+- jslint-ci - Update ci-shell-function shGitLsTree() to include sha256 hash of files.
+
 # v2026.6.30
 - jslint-ecma - Update README.md, documenting supported ES2015+ features.
 - jslint - Change scope from scope_function to scope_block:
