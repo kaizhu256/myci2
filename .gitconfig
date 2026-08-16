@@ -2,6 +2,9 @@
 [branch "alpha"]
     merge = refs/heads/alpha
     remote = origin
+[branch "alpha2"]
+    merge = refs/heads/alpha2
+    remote = origin
 [branch "base"]
     merge = refs/heads/base
     remote = origin
@@ -21,7 +24,7 @@
 # base - .gitconfig - end
 [remote "origin"]
     fetch = +refs/heads/*:refs/remotes/origin/*
-    url = https://github.com/owner/repo
+    url = https://github.com/kaizhu256/myci2
 # [remote "upstream"]
 #     fetch = +refs/heads/*:refs/remotes/upstream/*
-#     url = https://github.com/owner/repo
+#     url = https://github.com/kaizhu256/myci2
