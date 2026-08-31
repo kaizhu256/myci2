@@ -664,6 +664,16 @@ shSecretFileSet() {(set -e
     shSecretDecryptEncrypt shSecretFileSet "$@"
 )}
 
+shSecretGitPull() {(set -e
+# this function will git-pull mysecret2 from dir $1
+    cd "${1:-$HOME/.mysecret2}"
+    if ! shGitCmdWithGithubToken pull origin _mysecret2
+    then
+        git reset origin/_mysecret2 --hard
+    fi
+    shSecretDecryptFile . "$@"
+)}
+
 shSecretGitPush() {(set -e
 # this function will git-commit-and-push mysecret2
     cd "${1:-$HOME/.mysecret2}"
@@ -677,16 +687,6 @@ shSecretGitPush() {(set -e
         shSecretGitPull . "$@"
         shGitCommitPushOrSquash "" 100
     fi
-)}
-
-shSecretGitPull() {(set -e
-# this function will git-pull mysecret2 from dir $1
-    cd "${1:-$HOME/.mysecret2}"
-    if ! shGitCmdWithGithubToken pull origin _mysecret2
-    then
-        git reset origin/_mysecret2 --hard
-    fi
-    shSecretDecryptFile . "$@"
 )}
 
 shSecretJsonGet() {(set -e
