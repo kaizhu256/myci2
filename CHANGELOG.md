@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2026.9.29
+- jslint-ecma - Add ES2018-feature Asynchronous Iteration - for await...of.
+
 # v2026.8.31
 - jslint-ci - Update ci-shell-function shGitLsTree() to include sha256 hash of files.
 
