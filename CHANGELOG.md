@@ -6,6 +6,8 @@
 # v2026.9.29
 - jslint-cli - Add cli-option jslint_autofix=filename to autofix whitespace-warnings, and add function jslint_phase6_autofix().
 - jslint-ecma - Add ES2018-feature Asynchronous Iteration - for await...of.
+- jslint - Move column-fudging into warn_at(); callers pass 0-based column.
+- jslint-cli - Skip dotfiles when linting a directory.
 
 # v2026.8.31
 - jslint-ci - Update ci-shell-function shGitLsTree() to include sha256 hash of files.
