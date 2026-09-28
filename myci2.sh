@@ -852,7 +852,7 @@ import moduleChildProcess from "child_process";
     await new Promise(function (resolve) {
         moduleChildProcess.spawn(
             "sh",
-            ["-c", (`
+            ["-c", (String.raw`
 (set -e
     cd ~/myci2/
     . ./jslint_ci.sh

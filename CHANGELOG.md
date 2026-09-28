@@ -4,6 +4,7 @@
 - none
 
 # v2026.9.29
+- jslint - Check escapes in untagged megastrings via \<char_after_escape>.
 - jslint-cli - Add cli-option jslint_autofix=filename to autofix whitespace-warnings, and add function jslint_phase6_autofix().
 - jslint-ecma - Add ES2018-feature Asynchronous Iteration - for await...of.
 - jslint - Move column-fudging into warn_at(); callers pass 0-based column.
