@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2026.10.30
+- jslint - Report: Functions - Copy each signature from its source text, keeping default values.
+
 # v2026.9.29
 - jslint-ecma - Add Exponentiation-assignment-operator '**=' support.
 - jslint - Check escapes in untagged megastrings via \<char_after_escape>.
