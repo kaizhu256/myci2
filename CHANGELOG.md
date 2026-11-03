@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2026.11.29
+- ci - Bump to node_version 24 to 26.
+
 # v2026.10.30
 - jstest - Collect each describe's tests before running them, and report every failed, hung or crashed test at exit.
 - jslint - Revamp cause-based testing on option trace and V8 block coverage, replacing the runtime hook and option test_cause.
