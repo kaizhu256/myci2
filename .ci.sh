@@ -68,7 +68,7 @@ shCiBuildVcpkgUpload() {(set -e
 )}
 
 shCiPreCustom() {(set -e
-# this function will run pre-ci-custom
+# This function will run pre-ci-custom.
     # github-action-only
     if [ ! "$GITHUB_ACTION" ] || [ ! "$MY_GITHUB_TOKEN" ]; then return; fi
     if printf "%s" "$GITHUB_REF_NAME" | grep -q ".*/.*/.*"
