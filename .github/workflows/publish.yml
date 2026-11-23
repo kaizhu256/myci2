@@ -33,6 +33,7 @@ jobs:
 
   publish_npmjs:
     name: Publish Package to npmjs
+    if: ${{ !github.event.repository.fork }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
