@@ -467,7 +467,7 @@ const jslint_charset_ascii = (
     "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_" +
     "`abcdefghijklmnopqrstuvwxyz{|}~\u007f"
 );
-const jslint_edition = "v2026.11.2";
+const jslint_edition = "v2026.11.3";
 const jslint_fudge = 1;                 // Fudge starting line and starting
                                         // ... column to 1.
 const jslint_global_dict_all = {
@@ -5050,7 +5050,7 @@ function jslint_phase3_parse(state) {
 // PR-519 - Allow member-access on a parenthesized binary-expression or ternary,
 // explicit by its parens, as in '(aa + bb).padEnd(cc)', and a call or
 // tagged-template only on '||', '&&' or '??', which can yield a function. A
-// parenthesized literal or arrow-function warns, a second way to '"aa".bb'.
+// parenthesized literal warns, a second way to write '"aa".bb'.
 
 // test_cause:
 // ["(aa+aa).aa", "check_left", "(live)", "", 0]
